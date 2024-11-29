@@ -37,6 +37,14 @@
         <input type="radio" id="Advanced" name="exercise" value="Advanced">
         <label for="Advanced">Advanced</label><br>
         <br>
+            Check all your interests:
+            {% for interest in interests %}
+                <div>
+                    <input type="checkbox" id="interest-{{ interest[0] }}" name="interests" value="{{ interest[0] }}">
+                    <label for="interest-{{ interest[0] }}">{{ interest[1] }}</label>
+                </div>
+            {% endfor %}
+        <br>
         <label for="password">Password</label>
         <input type="password" id="password" name="password" required>
         <br>
