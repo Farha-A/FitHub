@@ -97,7 +97,7 @@ def traineeSignUp():
             interests += inter[0] + ","
         interests = interests[:-1]
         userid_count = conn.execute('SELECT COUNT(*) FROM User').fetchone()
-        userid = userid_count[0] + 1
+        userid = str(userid_count[0] + 1)
 
         conn.execute('INSERT INTO User (User_ID, Name, Email, Age, Gender, Password, Role, Interests) '
                      'VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
@@ -138,7 +138,7 @@ def coachSignUp():
             interests += inter[0] + ","
         interests = interests[:-1]
         userid_count = conn.execute('SELECT COUNT(*) FROM User').fetchone()
-        userid = userid_count[0] + 1
+        userid = str(userid_count[0] + 1)
 
         conn.execute('INSERT INTO User (User_ID, Name, Email, Age, Gender, Password, Role, Interests) '
                      'VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
