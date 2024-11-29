@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Verify Coaches</title>
+</head>
+<style>
+    table, th, td {
+        border:1px solid black;
+    }
+</style>
+<body>
+    <h3>Coaches to be Verified:</h3>
+    <table style="width:100%">
+        <tr>
+            <th>Name</th>
+            <th>Age</th>
+            <th>Gender</th>
+            <th>Experience Description</th>
+            <th>Experience Years</th>
+            <th>Certificates</th>
+            <th>Actions</th>
+        </tr>
+        {%for coach in coaches%}
+            <tr>
+                <td>{{ coach[6] }}</td> {# name #}
+                <td>{{ coach[10] }}</td> {# age #}
+                <td>{{ coach[11] }}</td> {# gender #}
+                <td>{{ coach[2] }}</td> {# experience description #}
+                <td>{{ coach[3] }}</td> {# experience years #}
+                <td>{{ coach[4] }}</td> {# certificates #}
+                <td>
+                    <form method="POST" action="/verify">
+                    <input type="hidden" name="verify" value="{{coach[0]}}">
+                    <button type="submit">Verify</button>
+                    </form>
+                    <form method="POST" action="/deny">
+                    <input type="hidden" name="deny" value="{{coach[0]}}">
+                    <button type="submit">Deny</button>
+                    </form>
+                </td>
+            </tr>
+    
+    {%endfor%}
+</body>
+</html>
