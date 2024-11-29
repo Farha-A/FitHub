@@ -23,6 +23,14 @@
         <input type="radio" id="Male" name="gender" value="Male">
         <label for="Male">Male</label><br>
         <br>
+            Check all your interests:
+            {% for interest in interests %}
+                <div>
+                    <input type="checkbox" id="interest-{{ interest[0] }}" name="interests" value="{{ interest[0] }}">
+                    <label for="interest-{{ interest[0] }}">{{ interest[1] }}</label>
+                </div>
+            {% endfor %}
+        <br>
         <label for="password">Password</label>
         <input type="password" id="password" name="password">
         <br>
