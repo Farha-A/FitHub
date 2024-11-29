@@ -169,10 +169,8 @@ def add_recipe():
     if 'User_ID' not in session:
         return redirect(url_for('login'))  # Redirect to login if no User_ID in session
     
-    User_ID = str(session['User_ID'])  # Convert session User_ID to string
-    
+    User_ID = str(session['User_ID'])
     if request.method == 'POST':
-        # Get values from the form fields
         recipe_name = request.form.get('Recipe_Name')
         meal_type = request.form.get('Meal_Type')
         nutrition_info = request.form.get('Nutrition_Information')
@@ -185,7 +183,6 @@ def add_recipe():
             return "All fields are required!"
 
         try:
-            # Generate a random Recipe_ID
             random_recipe_id = random.randint(1000, 9999)
 
             print(f"Generated random Recipe_ID: {random_recipe_id}")
@@ -199,7 +196,6 @@ def add_recipe():
 
             conn.commit()
 
-            # Print the new Recipe_ID for debugging
             print(f"New Recipe added successfully with ID: {random_recipe_id}")
 
         except Exception as e:
