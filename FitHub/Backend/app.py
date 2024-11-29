@@ -157,6 +157,103 @@ def coachSignUp():
     return render_template("coachSignUp.html", interests=all_interests)
 
 
+@app.route('/posts', methods=['GET', 'POST'])
+def posts_screen():
+    if 'User_ID' in session:
+        User_ID = session['User_ID']
+        conn = get_db_connection()
+
+        # Fetch user data
+        user = conn.execute('SELECT * FROM User WHERE User_ID = ?', (User_ID,)).fetchone()
+
+        # Share post functionality (without media upload)
+        if request.method == 'POST':
+            post_content = request.form['content']
+            post_media = request.form.get('media')  # assuming media URL or filename is provided directly
+
+            conn.execute(
+                'INSERT INTO Post (User_ID, Content, Time_Stamp, Media) VALUES (?, ?, datetime("now"), ?)',
+                (user['User_ID'], post_content, post_media)
+            )
+            conn.commit()
+
+        # Fetch user's interests and the corresponding posts
+        user_interests = user['Interests'].split(',')
+        placeholders = ', '.join(['?'] * len(user_interests))
+        interest_ids = conn.execute(
+            'SELECT Interest_ID FROM Interest WHERE Name IN (' + placeholders + ')',
+            tuple(user_interests)
+        ).fetchall()
+
+        # Convert to a list of interest IDs
+        interest_ids = [str(row['Interest_ID']) for row in interest_ids]
+
+        placeholders_for_interest_ids = ', '.join(['?'] * len(interest_ids))
+
+        # Fetch posts by user interests
+        posts_by_interest = conn.execute(
+            f'''SELECT *
+FROM Post
+WHERE EXISTS (SELECT 1
+              FROM Interest
+              WHERE Interest.Interest_ID IN ({placeholders_for_interest_ids})
+                AND Post.tags LIKE '%' || Interest.Interest_ID || '%')
+ORDER BY Time_Stamp DESC''' ,
+            tuple(interest_ids)
+        ).fetchall()
+
+        # Fetch remaining posts
+        remaining_posts = conn.execute(
+            f'''SELECT * FROM Post WHERE Post_ID NOT IN (
+                SELECT Post_ID FROM Post
+                WHERE EXISTS (
+                    SELECT 1 FROM Interest 
+                    WHERE Interest.Interest_ID IN ({placeholders_for_interest_ids}) 
+                      AND Post.tags LIKE '%' || Interest.Interest_ID || '%')) 
+                ORDER BY Time_Stamp DESC''',
+            tuple(interest_ids)
+        ).fetchall()
+
+        # Combine the posts
+        all_posts = posts_by_interest + remaining_posts
+
+        # Fetch comments for each post
+        posts_with_comments = []
+        for post in all_posts:
+            comments = conn.execute(
+                'SELECT * FROM Comment WHERE Post_ID = ? ORDER BY Time_Stamp DESC',
+                (post['Post_ID'],)
+            ).fetchall()
+            posts_with_comments.append({
+                'post': post,
+                'comments': comments
+            })
+
+        conn.close()
+
+        return render_template("posts_screen.html", user=user, posts_with_comments=posts_with_comments)
+
+    return redirect(url_for('login'))
+
+@app.route('/add_comment/<int:post_id>', methods=['POST'])
+def add_comment(post_id):
+    if 'User_ID' in session:
+        User_ID = session['User_ID']
+        conn = get_db_connection()
+
+        comment_content = request.form['comment_content']
+
+        conn.execute(
+            'INSERT INTO Comment (Post_ID, User_ID, Content, Time_Stamp) VALUES (?, ?, ?, datetime("now"))',
+            (post_id, User_ID, comment_content)
+        )
+        conn.commit()
+        conn.close()
+
+        return redirect(url_for('posts_screen'))
+    return redirect(url_for('login'))
+
+
 @app.route('/admin', methods=["GET", "POST"])
 def unverifiedCoaches():
     conn = get_db_connection()
