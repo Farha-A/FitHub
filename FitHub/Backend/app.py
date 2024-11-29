@@ -15,12 +15,12 @@ def get_db_connection():
 
 @app.route('/', methods=['GET', 'POST'])
 def home_page():
-    if 'Email' in session:
-        Email = session['Email']
+    if 'User_ID' in session:
+        User_ID = session['User_ID']
         conn = get_db_connection()
-        user = conn.execute('SELECT * FROM User WHERE email = ?', (Email,)).fetchone()
+        user = conn.execute('SELECT * FROM User WHERE User_ID = ?', (User_ID,)).fetchone()
         conn.close()
-        return render_template("home_page.html", user=user)
+        return render_template("homepage.html", user=user)
     return redirect(url_for('login'))
 
 
@@ -40,12 +40,24 @@ def login():
                             (Email, password)).fetchone()
         conn.close()
         if user:
-            session['Email'] = Email
-            return redirect(url_for('home_page'))
+            session['User_ID'] = user[0]
+            return redirect(url_for('redirectPerRole'))
         else:
             flash('Invalid email or password', 'danger')
 
     return render_template("login.html")
+
+
+@app.route('/redirect', methods=['GET', 'POST'])
+def redirectPerRole():
+    User_ID = str(session['User_ID'])
+    conn = get_db_connection()
+    role = conn.execute('SELECT Role FROM User WHERE User_ID = ?', (User_ID,)).fetchone()
+    conn.close()
+    role = role[0]
+    if role == "Admin":
+        return redirect(url_for('unverifiedCoaches'))
+    return redirect(url_for('home_page'))
 
 
 @app.route('/logout', methods=['GET', 'POST'])
@@ -84,7 +96,7 @@ def traineeSignUp():
 
         conn.commit()
         conn.close()
-        return redirect(url_for('role_choice'))
+        return redirect(url_for('login'))
     return render_template("traineeSignUp.html")
 
 
@@ -97,7 +109,7 @@ def coachSignUp():
         username = request.form['username']
         email = request.form['email']
         age = request.form['age']
-        expYears = request.form['expYears']
+        expYears = str(request.form['expYears']) + " years"
         expDesc = request.form['expDesc']
         gender = request.form['gender']
         certificates = request.form['certificates']
@@ -117,8 +129,38 @@ def coachSignUp():
 
         conn.commit()
         conn.close()
-        return redirect(url_for('role_choice'))
+        return redirect(url_for('login'))
     return render_template("coachSignUp.html")
+
+
+@app.route('/admin', methods=["GET", "POST"])
+def unverifiedCoaches():
+    conn = get_db_connection()
+    unverifiedCoaches = conn.execute('SELECT * FROM Coach JOIN User ON User_ID=Coach_ID '
+                                     'WHERE Verified = "FALSE"').fetchall()
+    conn.close()
+    return render_template("verifyCoaches.html", coaches=unverifiedCoaches)
+
+
+@app.route('/verify', methods=["GET", "POST"])
+def verifyCoach():
+    coachID = request.form['verify']
+    conn = get_db_connection()
+    conn.execute('UPDATE Coach SET Verified = "TRUE" WHERE Coach_ID=?', (coachID,))
+    conn.commit()
+    conn.close()
+    return redirect(url_for('unverifiedCoaches'))
+
+
+@app.route('/deny', methods=["GET", "POST"])
+def denyCoach():
+    coachID = request.form['deny']
+    conn = get_db_connection()
+    conn.execute('DELETE FROM Coach WHERE Coach_ID=?', (coachID,))
+    conn.execute('DELETE FROM User WHERE User_ID=?', (coachID,))
+    conn.commit()
+    conn.close()
+    return redirect(url_for('unverifiedCoaches'))
 
 
 if __name__ == '__main__':
