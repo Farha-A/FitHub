@@ -1,3 +1,4 @@
+/*style for entire page*/
 body {
     margin: 0;
     padding: 0;
@@ -10,6 +11,7 @@ body {
     align-items: center;
 }
 
+/*table headers and rows styling*/
 th, td {
     border: 1px solid midnightblue;
     padding: 15px;
@@ -17,14 +19,17 @@ th, td {
     vertical-align: middle; 
 }
 
+/*table headers specific styling*/
 th {
     background-color: #6798CC;
 }
 
+/*table rows specific styling*/
 td {
     background-color: lightskyblue;
 }
 
+/*general button styling*/
 button {
     backface-visibility: hidden;
     background-color: #405cf5;
@@ -44,10 +49,12 @@ button {
     touch-action: manipulation;
 }
 
+/*verify button style override*/
 .verify {
     background-color: seagreen;
 }
 
+/*deny button style override*/
 .deny {
     background-color: indianred;
 }

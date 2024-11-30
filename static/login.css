@@ -1,3 +1,4 @@
+/*style for entire page*/
 body {
     margin: 0;
     padding: 0;
@@ -10,6 +11,7 @@ body {
     align-items: center;
 }
 
+/*general button styling*/
 button {
     backface-visibility: hidden;
     background-color: #405cf5;
@@ -29,14 +31,17 @@ button {
     touch-action: manipulation;
 }
 
+/*button colour override for go button*/
 .go {
     background-color: seagreen;
 }
 
+/*go button position adjustment*/
 .go-button-container {
     text-align: center; 
 }
 
+/*aligning forgot password & sign-up button side by side*/
 .forgot, .signup {
     height: 30px; 
     font-size: 90%; 
@@ -45,25 +50,30 @@ button {
     display: inline-block;
 }
 
+/*button colour override for forgot password button*/
 .forgot {
     background-color: indianred;
 }
 
+/*button colour override for sign-up button*/
 .signup {
     background-color: #405cf5;
 }
 
+/*paragraph styling*/
 p {
     padding: 10px;
     font-family: sans-serif;
 }
 
+/*text styling for no account access message*/
 .noacc {
     font-size: small;
     color: midnightblue;
     text-align: center; 
 }
 
+/*alignment for sign-up, forgot password*/
 .button-container {
     display: flex; 
     justify-content: center; 
@@ -71,6 +81,7 @@ p {
     gap: 10px; 
 }
 
+/*header styling*/
 h3 {
     display: inline-block;
     background-color: white;
@@ -82,15 +93,18 @@ h3 {
     text-align: center;
 }
 
+/*styling for invalid credentials message*/
 .message {
     font-size: x-small;
     color: midnightblue;
 }
 
+/*input styling*/
 input {
     padding: 10px 250px 10px 10px;
 }
 
+/*credentials input styling*/
 .pgo {
     padding: 1px;
 }

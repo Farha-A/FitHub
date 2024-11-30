@@ -3,11 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <title>Coach</title>
+    {# link to stylesheet #}
     <link rel="stylesheet" href="{{ url_for('static', filename='coachSignUp.css') }}">
 </head>
 <body>
 <div class="form-container">
 <h1>Coach</h1>
+{# take coach's information to sign-up' #}
 <form action="/coach" method="POST">
     <p>
         <input type="text" id="username" name="username" required placeholder="Name">
@@ -45,6 +47,7 @@
         <label for="certificates">Upload Certificates</label> <br>
         <input type="file" id="certificates" name="certificates">
         <br>
+        {# button to sign-up #}
         <button type="submit">Sign Up!</button>
     </p>
 </form>

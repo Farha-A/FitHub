@@ -1,3 +1,4 @@
+/*style for entire page*/
 body {
     margin: 0;
     padding: 0;
@@ -11,6 +12,7 @@ body {
     color: midnightblue;
 }
 
+/*general button styling*/
 button {
     backface-visibility: hidden;
     background-color: #405cf5;
@@ -30,6 +32,7 @@ button {
     touch-action: manipulation;
 }
 
+/*input styling*/
 input {
     padding: 10px 10px 10px 10px;
     width: 75%;
@@ -37,12 +40,14 @@ input {
     margin: 5px;
 }
 
+/*overriding input styling for the radio inputs*/
 .radio input {
     padding: 0;
     width: auto;
     box-sizing: content-box;
 }
 
+/*styling for the interest checkboxes to split into 4 columns*/
 .checkbox-grid {
     display: grid;
     grid-template-columns: repeat(8, 1fr); 
@@ -51,6 +56,7 @@ input {
     justify-content: center;
 }
 
+/*titles of radio/checkboxes styling*/
 .title {
     text-decoration-line: underline;
     text-decoration-color: midnightblue;
