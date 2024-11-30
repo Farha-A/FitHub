@@ -1,61 +1,80 @@
+# importing necessary libraries
 from flask import Flask, render_template, request, session, flash, redirect, url_for
 import sqlite3
 import random
 
+# database path
 DATABASE = 'FitHub_DB.sqlite'
 
+# app initialization
 app = Flask(__name__)
 app.secret_key = 'suchasecurekey'
 
 
+# function to connect to database
 def get_db_connection():
     conn = sqlite3.connect(DATABASE)
     conn.row_factory = sqlite3.Row
     return conn
 
 
+# load homepage
 @app.route('/', methods=['GET', 'POST'])
 def home_page():
+    # check if a user is logged in
     if 'User_ID' in session:
         User_ID = session['User_ID']
+        # returns logged-in user from the database
         conn = get_db_connection()
         user = conn.execute('SELECT * FROM User WHERE User_ID = ?', (User_ID,)).fetchone()
         conn.close()
+        # send the user to the homepage
         return render_template("homepage.html", user=user)
+    # if there's no user logged in, redirects them to the login page
     return redirect(url_for('login'))
 
 
+# sign up page where the new user decides if they're a coach or a trainee to
+# get redirected to the appropriate sign-up page
 @app.route('/signUp', methods=['GET', 'POST'])
 def role_choice():
     return render_template("role.html")
 
 
+# login page
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
+        # save email & password entered
         Email = request.form['Email']
         password = request.form['password']
 
+        # save user if a user with teh entered email and password exists
         conn = get_db_connection()
         user = conn.execute('SELECT * FROM User WHERE Email = ? AND password = ?',
                             (Email, password)).fetchone()
         conn.close()
+        # if a user is found save the id in the session to be used across pages
         if user:
             session['User_ID'] = user[0]
             return redirect(url_for('redirectPerRole'))
+        # if user isn't found a message is shown to inform that the credentials are invalid
         else:
             flash('Invalid email or password', 'danger')
 
     return render_template("login.html")
 
 
+# user redirection per user role
 @app.route('/redirect', methods=['GET', 'POST'])
 def redirectPerRole():
     User_ID = str(session['User_ID'])
     conn = get_db_connection()
+    # save logged in user's role
     role = conn.execute('SELECT Role FROM User WHERE User_ID = ?', (User_ID,)).fetchone()
     conn.close()
     role = role[0]
+    # direct to admin's page
     if role == "Admin":
         return redirect(url_for('unverifiedCoaches'))
     elif role == "Coach":
@@ -63,21 +82,29 @@ def redirectPerRole():
         verification = conn.execute('SELECT Verified FROM Coach WHERE Coach_ID = ?', (User_ID,)).fetchone()
         verification = verification[0]
         conn.close()
+        # if a coach is verified direct to homepage
         if verification == "TRUE":
             return redirect(url_for('home_page'))
+        # if not flash a message to inform them they can't access the site yet
         return "Please wait to be verified :)"
     return redirect(url_for('home_page'))
 
 
+# log out users
 @app.route('/logout', methods=['GET', 'POST'])
 def logout():
-    session.pop('Email', None)
+    # remove the saved userid
+    session.pop('User_ID', None)
+    # inform the user they logged out
     flash('You have been logged out.', 'info')
+    # redirect to login page
     return redirect(url_for('login'))
 
 
+# trainee sign-up
 @app.route('/trainee', methods=["GET", "POST"])
 def traineeSignUp():
+    # save the trainee's information based on their input
     if request.method == 'POST':
         role = "Trainee"
         username = request.form['username']
@@ -92,24 +119,31 @@ def traineeSignUp():
         interests_id = request.form.getlist('interests')
 
         conn = get_db_connection()
+        # save interests entered by their names
         interests = ""
         for intr in interests_id:
             inter = conn.execute('SELECT Name FROM Interest WHERE Interest_ID = ?', (intr,)).fetchone()
             interests += inter[0] + ","
         interests = interests[:-1]
+        # calculate new userid
         userid_count = conn.execute('SELECT COUNT(*) FROM User').fetchone()
         userid = str(userid_count[0] + 1)
 
+        # add trainee to user table
         conn.execute('INSERT INTO User (User_ID, Name, Email, Age, Gender, Password, Role, Interests) '
                      'VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
                      (userid, username, email, age, gender, password, role, interests))
 
+        # add trainee to trainee table
         conn.execute('INSERT INTO Trainee (Trainee_ID, Weight_kg, Height_m, BMI, Exercise_Level) '
                      'VALUES (?, ?, ?, ?, ?)',
                      (userid, weight, height, bmi, exercise))
 
+        # calculate new planid
         planid_count = conn.execute('SELECT COUNT(*) FROM Plan').fetchone()
         planid = str(planid_count[0] + 1)
+
+        # add basic plan based on gender
         if gender == "Female":
             init_plan = conn.execute('SELECT Plan FROM Plan WHERE Trainee_ID = ?', ("2",)).fetchone()
             conn.execute('INSERT INTO Plan (Plan_ID, Trainee_ID, Plan) VALUES (?, ?, ?)',
@@ -121,15 +155,19 @@ def traineeSignUp():
                          (planid, userid, init_plan[0]))
         conn.commit()
         conn.close()
+        # return user to login page
         return redirect(url_for('login'))
+    # get all interests from database to show in form
     conn = get_db_connection()
     all_interests = conn.execute('SELECT * FROM Interest').fetchall()
     conn.close()
     return render_template("traineeSignUp.html", interests=all_interests)
 
 
+# coach sign-up
 @app.route('/coach', methods=["GET", "POST"])
 def coachSignUp():
+    # save the coach's information based on their input
     if request.method == 'POST':
         role = "Coach"
         verified = "FALSE"
@@ -144,58 +182,74 @@ def coachSignUp():
         interests_id = request.form.getlist('interests')
 
         conn = get_db_connection()
+        # save interests entered by their names
         interests = ""
         for intr in interests_id:
             inter = conn.execute('SELECT Name FROM Interest WHERE Interest_ID = ?', (intr,)).fetchone()
             interests += inter[0] + ","
         interests = interests[:-1]
+        # calculate new userid
         userid_count = conn.execute('SELECT COUNT(*) FROM User').fetchone()
         userid = str(userid_count[0] + 1)
 
+        # add coach to user table
         conn.execute('INSERT INTO User (User_ID, Name, Email, Age, Gender, Password, Role, Interests) '
                      'VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
                      (userid, username, email, age, gender, password, role, interests))
 
+        # add coach to coach table
         conn.execute('INSERT INTO Coach (Coach_ID, Verified, Description, Experience, Certificates) '
                      'VALUES (?, ?, ?, ?, ?)',
                      (userid, verified, expDesc, expYears, certificates))
 
         conn.commit()
         conn.close()
+        # return user to login page
         return redirect(url_for('login'))
+    # get all interests from database to show in form
     conn = get_db_connection()
     all_interests = conn.execute('SELECT * FROM Interest').fetchall()
     conn.close()
     return render_template("coachSignUp.html", interests=all_interests)
 
 
+# admin page
 @app.route('/admin', methods=["GET", "POST"])
 def unverifiedCoaches():
     conn = get_db_connection()
+    # get all unverified coaches
     unverified_Coaches = conn.execute('SELECT * FROM Coach JOIN User ON User_ID=Coach_ID '
                                       'WHERE Verified = "FALSE"').fetchall()
     conn.close()
     return render_template("verifyCoaches.html", coaches=unverified_Coaches)
 
 
+# logic for coach verification
 @app.route('/verify_coach', methods=["GET", "POST"])
 def verifyCoach():
+    # gets coachID
     coachID = request.form['verify_coach']
     conn = get_db_connection()
+    # updates coach status to verified
     conn.execute('UPDATE Coach SET Verified = "TRUE" WHERE Coach_ID=?', (coachID,))
     conn.commit()
     conn.close()
+    # return to admin page
     return redirect(url_for('unverifiedCoaches'))
 
 
+# logic for coach denial
 @app.route('/deny_coach', methods=["GET", "POST"])
 def denyCoach():
+    # gets coachID
     coachID = request.form['deny_coach']
     conn = get_db_connection()
+    # delete coach from coach & user tables
     conn.execute('DELETE FROM Coach WHERE Coach_ID=?', (coachID,))
     conn.execute('DELETE FROM User WHERE User_ID=?', (coachID,))
     conn.commit()
     conn.close()
+    # return to admin page
     return redirect(url_for('unverifiedCoaches'))
 
 
