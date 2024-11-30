@@ -31,7 +31,16 @@ button {
 }
 
 input {
+    padding: 10px 10px 10px 10px;
+    width: 75%;
+    box-sizing: border-box;
     margin: 5px;
+}
+
+.radio input {
+    padding: 0;
+    width: auto;
+    box-sizing: content-box;
 }
 
 .checkbox-grid {
@@ -50,6 +59,3 @@ input {
     margin-bottom: 5px;
 }
 
-input {
-    padding: 10px 250px 10px 10px;
-}
