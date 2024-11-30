@@ -1,64 +1,120 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-    <meta charset="UTF-8">
+    <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Add Recipe</title>
+
+    <!-- Favicon -->
+    <link href="{{ url_for('static', filename='img/favicon.ico') }}" rel="icon">
+
+    <!-- Google Web Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500&family=Lora:wght@600;700&display=swap" rel="stylesheet">
+
+    <!-- Icon Font Stylesheet -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.10.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.4.1/font/bootstrap-icons.css" rel="stylesheet">
+
+    <!-- Libraries Stylesheet -->
+    <link href="{{ url_for('static', filename='lib/animate/animate.min.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='lib/owlcarousel/assets/owl.carousel.min.css') }}" rel="stylesheet">
+
+    <!-- Customized Bootstrap Stylesheet -->
+    <link href="{{ url_for('static', filename='css/bootstrap.min.css') }}" rel="stylesheet">
+
+    <!-- Template Stylesheet -->
+    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
 </head>
+
 <body>
-    <div>
-        <h1>Add a New Recipe</h1>
-
-        <!-- Flash messages display -->
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                <ul>
-                    {% for category, message in messages %}
-                        <li class="{{ category }}">{{ message }}</li>
-                    {% endfor %}
-                </ul>
-            {% endif %}
-        {% endwith %}
-
-        <!-- Recipe form -->
-        <form action="{{ url_for('add_recipe') }}" method="POST">
-            <div>
-                <label for="Recipe_Name">Recipe Name:</label>
-                <input type="text" id="Recipe_Name" name="Recipe_Name" required>
-            </div>
-            
-            <div>
-                <label for="Meal_Type">Meal Type:</label>
-                <select id="Meal_Type" name="Meal_Type" required>
-                    <option value="Breakfast">Breakfast</option>
-                    <option value="Lunch">Lunch</option>
-                    <option value="Dinner">Dinner</option>
-                    <option value="Snack">Snack</option>
-                </select>
-            </div>
-            
-            <div>
-                <label for="Nutrition_Information">Nutrition Information:</label>
-                <textarea id="Nutrition_Information" name="Nutrition_Information" rows="4" required></textarea>
-            </div>
-            
-            <div>
-                <label for="Media">Media (optional):</label>
-                <input type="text" id="Media" name="Media">
-            </div>
-            
-            <div>
-                <label for="Ingredients">Ingredients:</label>
-                <textarea id="Ingredients" name="Ingredients" rows="4" required></textarea>
-            </div>
-            
-            <div>
-                <label for="Steps">Steps:</label>
-                <textarea id="Steps" name="Steps" rows="6" required></textarea>
-            </div>
-            
-            <button type="submit">Add Recipe</button>
-        </form>
+    <!-- Spinner Start -->
+    <div id="spinner" class="show bg-white position-fixed translate-middle w-100 vh-100 top-50 start-50 d-flex align-items-center justify-content-center">
+        <div class="spinner-border text-primary" role="status"></div>
     </div>
+    <!-- Spinner End -->
+
+    <!-- Add Recipe Section Start -->
+    <div class="container-xxl py-5">
+        <div class="container">
+            <div class="row g-0 gx-5 align-items-end">
+                <div class="col-lg-6">
+                    <div class="section-header text-start mb-5 wow fadeInUp" data-wow-delay="0.1s" style="max-width: 500px;">
+                        <h1 class="display-5 mb-3">Add a New Recipe</h1>
+                        <p>Fill in the details to add a new recipe to your collection</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Flash messages display -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            <ul class="alert alert-info">
+                {% for category, message in messages %}
+                <li class="{{ category }}">{{ message }}</li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+            {% endwith %}
+
+            <!-- Recipe form -->
+            <form action="{{ url_for('add_recipe') }}" method="POST" class="bg-light p-4 rounded shadow">
+                <div class="mb-3">
+                    <label for="Recipe_Name" class="form-label">Recipe Name:</label>
+                    <input type="text" class="form-control" id="Recipe_Name" name="Recipe_Name" required>
+                </div>
+
+                <div class="mb-3">
+                    <label for="Meal_Type" class="form-label">Meal Type:</label>
+                    <select id="Meal_Type" name="Meal_Type" class="form-select" required>
+                        <option value="Breakfast">Breakfast</option>
+                        <option value="Lunch">Lunch</option>
+                        <option value="Dinner">Dinner</option>
+                        <option value="Snack">Snack</option>
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label for="Nutrition_Information" class="form-label">Nutrition Information:</label>
+                    <textarea id="Nutrition_Information" name="Nutrition_Information" class="form-control" rows="4" required></textarea>
+                </div>
+
+                <div class="mb-3">
+                    <label for="Media" class="form-label">Media (optional):</label>
+                    <input type="text" id="Media" name="Media" class="form-control">
+                </div>
+
+                <div class="mb-3">
+                    <label for="Ingredients" class="form-label">Ingredients:</label>
+                    <textarea id="Ingredients" name="Ingredients" class="form-control" rows="4" required></textarea>
+                </div>
+
+                <div class="mb-3">
+                    <label for="Steps" class="form-label">Steps:</label>
+                    <textarea id="Steps" name="Steps" class="form-control" rows="6" required></textarea>
+                </div>
+
+                <button type="submit" class="btn btn-primary">Add Recipe</button>
+            </form>
+        </div>
+    </div>
+    <!-- Add Recipe Section End -->
+
+    <!-- Back to Top -->
+    <a href="#" class="btn btn-lg btn-primary btn-lg-square rounded-circle back-to-top"><i class="bi bi-arrow-up"></i></a>
+
+    <!-- JavaScript Libraries -->
+    <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='lib/wow/wow.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='lib/easing/easing.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='lib/waypoints/waypoints.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='lib/owlcarousel/owl.carousel.min.js') }}"></script>
+
+    <!-- Template Javascript -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
+
 </html>
