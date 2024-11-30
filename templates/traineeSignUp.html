@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Trainee</title>
+</head>
+<body>
+<h3>Trainee</h3>
+<form action="/trainee" method="POST">
+    <p>
+        <label for="username">Username</label>
+        <input type="text" id="username" name="username" required>
+        <br>
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email" required>
+        <br>
+        <label for="age">Age</label>
+        <input type="number" id="age" name="age" required>
+        <br>
+        <label for="weight">Weight</label>
+        <input type="number" id="weight" name="weight" required>
+        <br>
+        <label for="height">Height</label>
+        <input type="number" step="0.01" id="height" name="height" required>
+        <br>
+        Gender: <br>
+        <input type="radio" id="Female" name="gender" value="Female">
+        <label for="Female">Female</label><br>
+        <input type="radio" id="Male" name="gender" value="Male">
+        <label for="Male">Male</label><br>
+        <br>
+        Exercise Level: <br>
+        <input type="radio" id="Beginner" name="exercise" value="Beginner">
+        <label for="Beginner">Beginner</label><br>
+        <input type="radio" id="Intermediate" name="exercise" value="Intermediate">
+        <label for="Intermediate">Intermediate</label><br>
+        <input type="radio" id="Advanced" name="exercise" value="Advanced">
+        <label for="Advanced">Advanced</label><br>
+        <br>
+            Check all your interests:
+            {% for interest in interests %}
+                <div>
+                    <input type="checkbox" id="interest-{{ interest[0] }}" name="interests" value="{{ interest[0] }}">
+                    <label for="interest-{{ interest[0] }}">{{ interest[1] }}</label>
+                </div>
+            {% endfor %}
+        <br>
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" required>
+        <br>
+        <button type="submit">Sign Up!</button>
+    </p>
+</form>
+</body>
+</html>

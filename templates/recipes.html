@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recipes List</title>
+</head>
+<body>
+    <div>
+        <h1>Recipes List</h1>
+        <table border="1">
+            <thead>
+                <tr>
+                    <th>Recipe ID</th>
+                    <th>Coach ID</th>
+                    <th>Meal Type</th>
+                    <th>Recipe Name</th>
+                    <th>Media</th>
+                    <th>Ingredients</th>
+                    <th>Steps</th>
+                    <th>Nutrition Information</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for recipe in recipes %}
+                <tr>
+                    <td>{{ recipe.Recipe_ID }}</td>
+                    <td>{{ recipe.Coach_ID }}</td>
+                    <td>{{ recipe.Meal_Type }}</td>
+                    <td>{{ recipe.Recipe_Name }}</td>
+                    <td>{{ recipe.Media }}</td>
+                    <td>{{ recipe.Ingredients }}</td>
+                    <td>{{ recipe.Steps }}</td>
+                    <td>{{ recipe.Nutrition_Information }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>

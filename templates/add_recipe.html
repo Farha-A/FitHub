@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add Recipe</title>
+</head>
+<body>
+    <div>
+        <h1>Add a New Recipe</h1>
+
+        <!-- Flash messages display -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <ul>
+                    {% for category, message in messages %}
+                        <li class="{{ category }}">{{ message }}</li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+        {% endwith %}
+
+        <!-- Recipe form -->
+        <form action="{{ url_for('add_recipe') }}" method="POST">
+            <div>
+                <label for="Recipe_Name">Recipe Name:</label>
+                <input type="text" id="Recipe_Name" name="Recipe_Name" required>
+            </div>
+            
+            <div>
+                <label for="Meal_Type">Meal Type:</label>
+                <select id="Meal_Type" name="Meal_Type" required>
+                    <option value="Breakfast">Breakfast</option>
+                    <option value="Lunch">Lunch</option>
+                    <option value="Dinner">Dinner</option>
+                    <option value="Snack">Snack</option>
+                </select>
+            </div>
+            
+            <div>
+                <label for="Nutrition_Information">Nutrition Information:</label>
+                <textarea id="Nutrition_Information" name="Nutrition_Information" rows="4" required></textarea>
+            </div>
+            
+            <div>
+                <label for="Media">Media (optional):</label>
+                <input type="text" id="Media" name="Media">
+            </div>
+            
+            <div>
+                <label for="Ingredients">Ingredients:</label>
+                <textarea id="Ingredients" name="Ingredients" rows="4" required></textarea>
+            </div>
+            
+            <div>
+                <label for="Steps">Steps:</label>
+                <textarea id="Steps" name="Steps" rows="6" required></textarea>
+            </div>
+            
+            <button type="submit">Add Recipe</button>
+        </form>
+    </div>
+</body>
+</html>
