@@ -227,23 +227,36 @@ def posts():
 
         all_posts = posts_by_interest + remaining_posts
 
-        # comments of the current post
+        posts_with_usernames = conn.execute('''
+            SELECT Post.*, User.Name 
+            FROM Post 
+            JOIN User ON Post.User_ID = User.User_ID
+        ''').fetchall()
+
         posts_with_comments = []
-        for post in all_posts:
-            comments = conn.execute(
-                'SELECT * FROM Comment WHERE Post_ID = ? ORDER BY Time_Stamp DESC',
-                (post['Post_ID'],)
-            ).fetchall()
-            posts_with_comments.append({
-                'post': post,
-                'comments': comments
-            })
+        for post in posts_with_usernames:
+            post_data = {
+                'post': {
+                    'Post_ID': post['Post_ID'],
+                    'Content': post['Content'],
+                    'Media': post['Media'],
+                    'Username': post['Name'],  
+                    'User_ID': post['User_ID']  
+                }
+            }
+            
+            # Add comments for each post
+            comments = conn.execute('SELECT * FROM Comment WHERE Post_ID = ?', (post['Post_ID'],)).fetchall()
+            post_data['comments'] = comments
+            
+            posts_with_comments.append(post_data)
 
         conn.close()
 
         return render_template("posts.html", user=user, posts_with_comments=posts_with_comments, interests=all_interests)
 
     return redirect(url_for('login'))
+
 
 @app.route('/add_comment', methods=['POST'])
 def add_comment(post_id):
