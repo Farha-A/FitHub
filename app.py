@@ -1,10 +1,11 @@
 from flask import Flask, render_template, request, session, flash, redirect, url_for
 import sqlite3
+import random
 
 DATABASE = 'FitHub_DB.sqlite'
 
 app = Flask(__name__)
-app.secret_key = 'keyyy'
+app.secret_key = 'suchasecurekey'
 
 
 def get_db_connection():
@@ -136,10 +137,10 @@ def coachSignUp():
 @app.route('/admin', methods=["GET", "POST"])
 def unverifiedCoaches():
     conn = get_db_connection()
-    unverifiedCoaches = conn.execute('SELECT * FROM Coach JOIN User ON User_ID=Coach_ID '
-                                     'WHERE Verified = "FALSE"').fetchall()
+    unverified_Coaches = conn.execute('SELECT * FROM Coach JOIN User ON User_ID=Coach_ID '
+                                      'WHERE Verified = "FALSE"').fetchall()
     conn.close()
-    return render_template("verifyCoaches.html", coaches=unverifiedCoaches)
+    return render_template("verifyCoaches.html", coaches=unverified_Coaches)
 
 
 @app.route('/verify', methods=["GET", "POST"])
@@ -162,13 +163,12 @@ def denyCoach():
     conn.close()
     return redirect(url_for('unverifiedCoaches'))
 
-import random
 
 @app.route('/add_recipe', methods=['GET', 'POST'])
 def add_recipe():
     if 'User_ID' not in session:
-        return redirect(url_for('login'))  # Redirect to login if no User_ID in session
-    
+        return redirect(url_for('login'))  # Redirect to log in if no User_ID in session
+
     User_ID = str(session['User_ID'])
     if request.method == 'POST':
         recipe_name = request.form.get('Recipe_Name')
@@ -189,9 +189,9 @@ def add_recipe():
 
             conn = get_db_connection()
             cursor = conn.cursor()
-            cursor.execute("""
-                INSERT INTO Recipe (Recipe_ID, Coach_ID, Recipe_Name, Meal_Type, Nutrition_Information, Media, Steps, Ingredients)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            cursor.execute("""INSERT INTO Recipe (Recipe_ID, Coach_ID, Recipe_Name, Meal_Type, Nutrition_Information,
+                                                        Media, Steps, Ingredients)
+                                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """, (random_recipe_id, User_ID, recipe_name, meal_type, nutrition_info, media, steps, ingredients))
 
             conn.commit()
@@ -202,14 +202,14 @@ def add_recipe():
             print(f"Error occurred while adding recipe: {str(e)}")
             return f"An error occurred: {str(e)}. Please try again later."
 
-        return redirect(url_for('GetRecipes')) 
+        return redirect(url_for('GetRecipes'))
 
-    return render_template('add_recipe.html') 
+    return render_template('add_recipe.html')
 
 
 @app.route('/recipes', methods=['GET'])
 def GetRecipes():
-    conn = get_db_connection() 
+    conn = get_db_connection()
     cursor = conn.cursor()
     query = """
     SELECT Recipe_ID, Coach_ID, Meal_Type, Recipe_Name, Media, Ingredients, Steps, Nutrition_Information
@@ -218,14 +218,17 @@ def GetRecipes():
 
     cursor.execute(query)
     result = cursor.fetchall()
-    recipes_data = [{"Recipe_ID": row[0], "Coach_ID": row[1], "Meal_Type": row[2], "Recipe_Name": row[3],"Media":row[4],'Ingredients':row[5],
-                     "Steps": row[6], "Nutrition_Information": row[7]} for row in result]
+    recipes_data = [
+        {"Recipe_ID": row[0], "Coach_ID": row[1], "Meal_Type": row[2], "Recipe_Name": row[3], "Media": row[4],
+         'Ingredients': row[5],
+         "Steps": row[6], "Nutrition_Information": row[7]} for row in result]
 
     return render_template('recipes.html', recipes=recipes_data)
 
+
 @app.route('/coaches', methods=['GET'])
 def GetCoach():
-    conn = get_db_connection() 
+    conn = get_db_connection()
     cursor = conn.cursor()
     query = """
     SELECT  Coach_ID, Verified, Description, Experience, Certificates
@@ -233,10 +236,12 @@ def GetCoach():
     """
     cursor.execute(query)
     result = cursor.fetchall()
-    coaches_data = [{"Coach_ID": row[0], "Verified": row[1], "Description": row[2], "Experience": row[3],"Certificates":row[4],
-                    } for row in result]
+    coaches_data = [
+        {"Coach_ID": row[0], "Verified": row[1], "Description": row[2], "Experience": row[3], "Certificates": row[4],
+         } for row in result]
 
     return render_template('coaches.html', coaches=coaches_data)
+
 
 if __name__ == '__main__':
     app.run(host="127.0.0.1", port=5000, debug=True)
