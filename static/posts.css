@@ -1,0 +1,180 @@
+body {
+    margin: 0;
+    padding: 0;
+    background: linear-gradient(to bottom, cornflowerblue, deepskyblue);
+    font-family: sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Container Styling */
+.container {
+    width: 80%;
+    max-width: 800px;
+    background: white;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Share Post Frame */
+.share-post-frame {
+    border: 1px solid #e0e0e0;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+    background-color: #f9f9ff;
+    box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Post Form */
+.post-form {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 20px;
+}
+
+.post-form textarea {
+    width: 97%;
+    height: 80px;
+    margin-bottom: 10px;
+    padding: 10px;
+    border-radius: 6px;
+    border: 1px solid lightgray;
+}
+
+.post-form button {
+    align-self: flex-end;
+    background-color: #6f93e2;
+    border-radius: 6px;
+    border-width: 0;
+    box-shadow: rgba(50, 50, 93, 0.1) 0 0 0 1px inset, rgba(50, 50, 93, 0.1) 0 2px 5px 0, rgba(0, 0, 0, 0.07) 0 1px 1px 0;
+    color: #fff;
+    cursor: pointer;
+    font-size: 100%;
+    height: 44px;
+    line-height: 1.15;
+    margin: 12px 0 0;
+    padding: 0 25px;
+    text-align: center;
+    touch-action: manipulation;
+}
+
+input[type="file"] {
+    border: none;
+    cursor: pointer;
+}
+
+input[type="file"]::file-selector-button {
+    background-color: #6f93e2;
+    color: white;
+    border: none;
+    padding: 10px;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+input[type="file"]::file-selector-button:hover {
+    background-color: #567ccf;
+}
+
+.tags-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr); 
+    gap: 10px; 
+    margin-top: 10px;
+}
+
+.tags-grid div {
+    display: flex;
+    align-items: center;
+    font-size: 14px;
+}
+
+.tags-grid input {
+    margin-right: 8px;
+}
+
+/* Recent Posts  */
+.post {
+    margin-bottom: 20px;
+    padding: 15px;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+}
+
+.post img {
+    max-width: 100%;
+    border-radius: 6px;
+    margin: 10px 0;
+}
+
+/* User Info  */
+.user-info {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.user-info img {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    margin-right: 10px;
+}
+
+.user-info h4 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: bold;
+}
+
+/* Toggle view Comments Button */
+.toggle-comments-button {
+    background-color: #6f93e2;
+    color: white;
+    border: none;
+    padding: 10px;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-top: 10px;
+    width: 100%;
+}
+
+.toggle-comments-button:hover {
+    background-color: #567ccf;
+}
+
+/* Add Comment Form */
+.comment-form {
+    display: flex;
+    align-items: center; 
+    margin-top: 10px;
+    width: 100%; 
+    gap: 10px; 
+}
+
+.comment-form input {
+    padding: 10px;
+    border-radius: 6px;
+    border: 1px solid lightgray;
+    flex: 1; 
+    font-size: 14px;
+}
+
+.comment-form button {
+    background-color: #6f93e2;
+    color: white;
+    border: none;
+    padding: 10px 20px; 
+    cursor: pointer;
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+.comment-form button:hover {
+    background-color: #567ccf;
+}

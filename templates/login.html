@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Login</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='login.css') }}">
+</head>
+<body>
+<h3>Login</h3>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        {% for category, message in messages %}
+            <div class="message {{ category }}">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
+{% endwith %}
+
+<form action="/login" method="POST">
+    <p class="pgo">
+        <input type="Email" id="Email" name="Email" placeholder="Email">
+    </p>
+    <p class="pgo">
+        <input type="password" id="password" name="password" placeholder="Password">
+    </p>
+    <div class="go-button-container">
+        <button type="submit" value="Go!" class="go">Go!</button>
+    </div>
+</form>
+
+<p class="noacc">
+    <span>Cannot Login?</span>
+    <div class="button-container">
+        <button type="button" class="forgot">Forgot Password?</button>
+        <form method="POST" action="/signUp" style="margin: 0;">
+            <button type="submit" class="signup">Sign Up!</button>
+        </form>
+    </div>
+</p>
+
+
+</body>
+</html>
+

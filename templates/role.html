@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Role</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='role.css') }}">
+</head>
+<body>
+<div class="gradient-container">
+    <div class="role">
+        <h3>Choose your role:</h3>
+        <form action="/trainee">
+            <button type="submit" value="Trainee">Trainee</button>
+        </form>
+        <form action="/coach">
+            <button type="submit" value="Coach">Coach</button>
+        </form>
+    </div>
+</div>
+</body>
+</html>
