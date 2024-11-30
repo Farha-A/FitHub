@@ -3,12 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <title>Verify Coaches</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='coachverification.css') }}">
 </head>
-<style>
-    table, th, td {
-        border:1px solid black;
-    }
-</style>
+
 <body>
     <h3>Coaches to be Verified:</h3>
     <table style="width:100%">
@@ -34,11 +31,11 @@
                 <td>
                     <form method="POST" action="/verify_coach">
                     <input type="hidden" name="verify_coach" value="{{coach[0]}}">
-                    <button type="submit">Verify</button>
+                    <button type="submit" class="verify">Verify</button>
                     </form>
                     <form method="POST" action="/deny_coach">
                     <input type="hidden" name="deny_coach" value="{{coach[0]}}">
-                    <button type="submit">Deny</button>
+                    <button type="submit" class="deny">Deny</button>
                     </form>
                 </td>
             </tr>
