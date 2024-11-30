@@ -252,6 +252,128 @@ def denyCoach():
     # return to admin page
     return redirect(url_for('unverifiedCoaches'))
 
+@app.route('/posts', methods=['GET', 'POST'])
+def posts():
+    if 'User_ID' in session:
+        User_ID = session['User_ID']
+        conn = get_db_connection()
+
+        # user info
+        user = conn.execute('SELECT * FROM User WHERE User_ID = ?', (User_ID,)).fetchone()
+
+        # available tags/Interests
+        all_interests = conn.execute('SELECT * FROM Interest').fetchall()
+
+        # Share post
+        if request.method == 'POST':
+            post_content = request.form['content']
+            post_media = request.form.get('media')  # need modifing
+            selected_tags = request.form.getlist('tags')  # Get selected tags"as list"
+
+            # Post_ID
+            postid_count = conn.execute('SELECT COUNT(*) FROM Post').fetchone()
+            postid = postid_count[0] + 1
+
+            # save the post to database
+            tags_str = '/'.join(selected_tags)  # save tags  "seperated by slash"
+            conn.execute(
+                '''INSERT INTO Post (Post_ID, User_ID, Content, Time_Stamp, Media, Tags) 
+                   VALUES (?, ?, ?, datetime("now"), ?, ?)''',
+                (postid, user['User_ID'], post_content, post_media, tags_str)
+            )
+            conn.commit()
+
+        # user interests and corresponding posts
+        user_interests = user['Interests'].split(',')  # Get user interests as a list
+        placeholders = ', '.join(['?'] * len(user_interests))
+        interest_ids = conn.execute(
+            'SELECT Interest_ID FROM Interest WHERE Name IN (' + placeholders + ')',
+            tuple(user_interests)
+        ).fetchall()
+
+        # list of Interest_IDs
+        interest_ids = [str(row['Interest_ID']) for row in interest_ids]
+        placeholders_for_interest_ids = ', '.join(['?'] * len(interest_ids))
+
+        # Fetch posts by interest with ORDER BY Time_Stamp DESC
+        posts_by_interest = conn.execute(
+            f'''SELECT * FROM Post WHERE EXISTS (
+                SELECT 1 FROM Interest 
+                WHERE Interest.Interest_ID IN ({placeholders_for_interest_ids}) 
+                  AND Post.Tags LIKE '%' || Interest.Interest_ID || '%') 
+                ORDER BY Time_Stamp DESC''',
+            tuple(interest_ids)
+        ).fetchall()
+
+        remaining_posts = conn.execute(
+            f'''SELECT * FROM Post WHERE Post_ID NOT IN (
+                SELECT Post_ID FROM Post 
+                WHERE EXISTS (
+                    SELECT 1 FROM Interest 
+                    WHERE Interest.Interest_ID IN ({placeholders_for_interest_ids}) 
+                      AND Post.Tags LIKE '%' || Interest.Interest_ID || '%')) 
+                ORDER BY Time_Stamp DESC''',
+            tuple(interest_ids)
+        ).fetchall()
+
+        # Combine posts and ensure the final list is sorted by Time_Stamp
+        all_posts = posts_by_interest + remaining_posts
+        all_posts = sorted(all_posts, key=lambda x: x['Time_Stamp'], reverse=True)
+
+        posts_with_usernames = conn.execute(''' 
+            SELECT Post.*, User.Name 
+            FROM Post 
+            JOIN User ON Post.User_ID = User.User_ID
+        ''').fetchall()
+
+        posts_with_comments = []
+        for post in posts_with_usernames:
+            post_data = {
+                'post': {
+                    'Post_ID': post['Post_ID'],
+                    'Content': post['Content'],
+                    'Media': post['Media'],
+                    'Username': post['Name'],  
+                    'User_ID': post['User_ID']  
+                }
+            }
+            
+            # add comment for post
+            comments = conn.execute('SELECT * FROM Comment WHERE Post_ID = ?', (post['Post_ID'],)).fetchall()
+            post_data['comments'] = comments
+            
+            posts_with_comments.append(post_data)
+
+        conn.close()
+
+        return render_template("posts.html", user=user, posts_with_comments=posts_with_comments, interests=all_interests)
+
+    return redirect(url_for('login'))
+
+
+@app.route('/add_comment/<int:post_id>', methods=['POST'])
+def add_comment(post_id):
+    if 'User_ID' in session:
+        User_ID = session['User_ID']
+        conn = get_db_connection()
+
+        # get the comment ID 
+        commentid_count = conn.execute('SELECT COUNT(*) FROM Comment').fetchone()
+        commentid = commentid_count[0] + 1
+
+        # get comment content from the form
+        comment_content = request.form['comment_content']
+
+        # Insert comment into  database
+        conn.execute(
+            'INSERT INTO Comment (Comment_ID, Post_ID, User_ID, Content, Time_Stamp) VALUES (?, ?, ?, ?, datetime("now"))',
+            (commentid, post_id, User_ID, comment_content)
+        )
+        conn.commit()
+        conn.close()
+
+        return redirect(url_for('posts'))
+    return redirect(url_for('login'))
 
 @app.route('/add_recipe', methods=['GET', 'POST'])
 def add_recipe():
