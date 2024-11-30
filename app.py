@@ -357,13 +357,13 @@ def add_comment(post_id):
     return redirect(url_for('login'))
 
 import random
-
+#Coach can add new recipes
 @app.route('/add_recipe', methods=['GET', 'POST'])
 def add_recipe():
     if 'User_ID' not in session:
         return redirect(url_for('login'))
     
-    User_ID = str(session['User_ID'])  # Ensure User_ID is a string
+    User_ID = str(session['User_ID'])  
     if request.method == 'POST':
         recipe_name = request.form.get('Recipe_Name')
         meal_type = request.form.get('Meal_Type')
@@ -406,6 +406,7 @@ def add_recipe():
     return render_template('add_recipe.html')
 
 
+#Show all recipes to user
 @app.route('/recipes', methods=['GET'])
 def GetRecipes():
     conn = get_db_connection()
@@ -426,13 +427,13 @@ def GetRecipes():
     return render_template('recipes.html', recipes=recipes_data)
 
 
-
+#Show recipes details when the user click on more details 
 @app.route('/recipes/<recipe_id>', methods=['GET'])
-def GetRecipeDetails(recipe_id):  # Recipe_ID as a string
+def GetRecipeDetails(recipe_id): 
     conn = get_db_connection()
     cursor = conn.cursor()
     
-    cursor.execute("SELECT * FROM Recipe WHERE Recipe_ID = ?", (recipe_id,))  # No type conversion
+    cursor.execute("SELECT * FROM Recipe WHERE Recipe_ID = ?", (recipe_id,))  
     recipe = cursor.fetchone()
     
     if recipe is None:
@@ -450,8 +451,8 @@ def GetRecipeDetails(recipe_id):  # Recipe_ID as a string
 
     return render_template('recipes_detailed.html', recipe=recipe_data)
 
-
-@app.route('/coaches', methods=['GET'])
+#Show coach details for trainee so that he can add the suitable coach for him
+@app.route('/coaches',methods=['GET'])
 def GetCoach():
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -460,36 +461,34 @@ def GetCoach():
     FROM Coach
     """
     cursor.execute(query)
-    result = cursor.fetchall()
+    result =cursor.fetchall()
     coaches_data = [
         {"Coach_ID": row[0], "Verified": row[1], "Description": row[2], "Experience": row[3], "Certificates": row[4],
          } for row in result]
 
     return render_template('coaches_details.html', coaches=coaches_data)
 
-
+#show exercises for users
 @app.route('/exercises', methods=['GET'])
 def GetExercises():
     try:
-        conn = get_db_connection()
+        conn =get_db_connection()
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM Exercise")
         Exercises_data = [dict(row) for row in cursor.fetchall()]
         conn.close()
-
         # Filter out entries with None Exercise_ID
-        valid_exercises = [exercise for exercise in Exercises_data if exercise['Exercise_ID'] is not None]
+        valid_exercises=[exercise for exercise in Exercises_data if exercise['Exercise_ID'] is not None]
 
         return render_template('exercises.html', Exercises=valid_exercises)
-
     except Exception as e:
         print(f"Error fetching exercises: {e}")
         return "Error fetching exercises", 500
 
+#Show more details for user about the clicked exercises
 @app.route('/exercise/<int:exercise_id>', methods=['GET'])
 def GetExerciseDetails(exercise_id):
     print(f"Received exercise_id: {exercise_id}")  
-    
     conn = get_db_connection()
     conn.row_factory = sqlite3.Row 
     cursor = conn.cursor()
@@ -500,7 +499,6 @@ def GetExerciseDetails(exercise_id):
     """
     cursor.execute(query, (str(exercise_id),))
     result = cursor.fetchone()  
-
     if result:
         exercise_details = {
             "Exercise_ID": result["Exercise_ID"],
@@ -517,6 +515,7 @@ def GetExerciseDetails(exercise_id):
         print("No exercise found with this ID.")
         return "Exercise not found", 404
 
+#Coach can add new exercises
 @app.route('/add_exercises', methods=['GET', 'POST'])
 def AddExercises():
     if 'User_ID' not in session:
@@ -542,7 +541,7 @@ def AddExercises():
             cursor = conn.cursor()
 
            
-            while True:
+            while True: # add a new random exercise id
                 random_exercise_id = random.randint(1000, 9999)
                 cursor.execute("SELECT 1 FROM Exercise WHERE Exercise_ID = ?", (random_exercise_id,))
                 if not cursor.fetchone():
