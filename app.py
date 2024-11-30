@@ -58,6 +58,14 @@ def redirectPerRole():
     role = role[0]
     if role == "Admin":
         return redirect(url_for('unverifiedCoaches'))
+    elif role == "Coach":
+        conn = get_db_connection()
+        verification = conn.execute('SELECT Verified FROM Coach WHERE Coach_ID = ?', (User_ID,)).fetchone()
+        verification = verification[0]
+        conn.close()
+        if verification == "TRUE":
+            return redirect(url_for('home_page'))
+        return "Please wait to be verified :)"
     return redirect(url_for('home_page'))
 
 
@@ -70,7 +78,6 @@ def logout():
 
 @app.route('/trainee', methods=["GET", "POST"])
 def traineeSignUp():
-    # EL INTERESTS YA BET
     if request.method == 'POST':
         role = "Trainee"
         username = request.form['username']
@@ -82,14 +89,20 @@ def traineeSignUp():
         exercise = request.form['exercise']
         password = request.form['password']
         bmi = round(int(weight) / (float(height) ** 2), 2)
+        interests_id = request.form.getlist('interests')
 
         conn = get_db_connection()
+        interests = ""
+        for intr in interests_id:
+            inter = conn.execute('SELECT Name FROM Interest WHERE Interest_ID = ?', (intr,)).fetchone()
+            interests += inter[0] + ","
+        interests = interests[:-1]
         userid_count = conn.execute('SELECT COUNT(*) FROM User').fetchone()
-        userid = userid_count[0] + 1
+        userid = str(userid_count[0] + 1)
 
-        conn.execute('INSERT INTO User (User_ID, Name, Email, Age, Gender, Password, Role) '
-                     'VALUES (?, ?, ?, ?, ?, ?, ?)',
-                     (userid, username, email, age, gender, password, role))
+        conn.execute('INSERT INTO User (User_ID, Name, Email, Age, Gender, Password, Role, Interests) '
+                     'VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+                     (userid, username, email, age, gender, password, role, interests))
 
         conn.execute('INSERT INTO Trainee (Trainee_ID, Weight_kg, Height_m, BMI, Exercise_Level) '
                      'VALUES (?, ?, ?, ?, ?)',
@@ -98,12 +111,14 @@ def traineeSignUp():
         conn.commit()
         conn.close()
         return redirect(url_for('login'))
-    return render_template("traineeSignUp.html")
+    conn = get_db_connection()
+    all_interests = conn.execute('SELECT * FROM Interest').fetchall()
+    conn.close()
+    return render_template("traineeSignUp.html", interests=all_interests)
 
 
 @app.route('/coach', methods=["GET", "POST"])
 def coachSignUp():
-    # EL INTERESTS YA BET
     if request.method == 'POST':
         role = "Coach"
         verified = "FALSE"
@@ -115,14 +130,20 @@ def coachSignUp():
         gender = request.form['gender']
         certificates = request.form['certificates']
         password = request.form['password']
+        interests_id = request.form.getlist('interests')
 
         conn = get_db_connection()
+        interests = ""
+        for intr in interests_id:
+            inter = conn.execute('SELECT Name FROM Interest WHERE Interest_ID = ?', (intr,)).fetchone()
+            interests += inter[0] + ","
+        interests = interests[:-1]
         userid_count = conn.execute('SELECT COUNT(*) FROM User').fetchone()
-        userid = userid_count[0] + 1
+        userid = str(userid_count[0] + 1)
 
-        conn.execute('INSERT INTO User (User_ID, Name, Email, Age, Gender, Password, Role) '
-                     'VALUES (?, ?, ?, ?, ?, ?, ?)',
-                     (userid, username, email, age, gender, password, role))
+        conn.execute('INSERT INTO User (User_ID, Name, Email, Age, Gender, Password, Role, Interests) '
+                     'VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+                     (userid, username, email, age, gender, password, role, interests))
 
         conn.execute('INSERT INTO Coach (Coach_ID, Verified, Description, Experience, Certificates) '
                      'VALUES (?, ?, ?, ?, ?)',
@@ -131,7 +152,10 @@ def coachSignUp():
         conn.commit()
         conn.close()
         return redirect(url_for('login'))
-    return render_template("coachSignUp.html")
+    conn = get_db_connection()
+    all_interests = conn.execute('SELECT * FROM Interest').fetchall()
+    conn.close()
+    return render_template("coachSignUp.html", interests=all_interests)
 
 
 @app.route('/admin', methods=["GET", "POST"])
