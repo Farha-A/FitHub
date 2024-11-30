@@ -108,6 +108,17 @@ def traineeSignUp():
                      'VALUES (?, ?, ?, ?, ?)',
                      (userid, weight, height, bmi, exercise))
 
+        planid_count = conn.execute('SELECT COUNT(*) FROM Plan').fetchone()
+        planid = str(planid_count[0] + 1)
+        if gender == "Female":
+            init_plan = conn.execute('SELECT Plan FROM Plan WHERE Trainee_ID = ?', ("2",)).fetchone()
+            conn.execute('INSERT INTO Plan (Plan_ID, Trainee_ID, Plan) VALUES (?, ?, ?)',
+                         (planid, userid, init_plan[0]))
+        else:
+            init_plan = conn.execute('SELECT Plan FROM Plan WHERE Trainee_ID = ?', ("38",)).fetchone()
+            print(init_plan)
+            conn.execute('INSERT INTO Plan (Plan_ID, Trainee_ID, Plan) VALUES (?, ?, ?)',
+                         (planid, userid, init_plan[0]))
         conn.commit()
         conn.close()
         return redirect(url_for('login'))
@@ -167,9 +178,9 @@ def unverifiedCoaches():
     return render_template("verifyCoaches.html", coaches=unverified_Coaches)
 
 
-@app.route('/verify', methods=["GET", "POST"])
+@app.route('/verify_coach', methods=["GET", "POST"])
 def verifyCoach():
-    coachID = request.form['verify']
+    coachID = request.form['verify_coach']
     conn = get_db_connection()
     conn.execute('UPDATE Coach SET Verified = "TRUE" WHERE Coach_ID=?', (coachID,))
     conn.commit()
@@ -177,9 +188,9 @@ def verifyCoach():
     return redirect(url_for('unverifiedCoaches'))
 
 
-@app.route('/deny', methods=["GET", "POST"])
+@app.route('/deny_coach', methods=["GET", "POST"])
 def denyCoach():
-    coachID = request.form['deny']
+    coachID = request.form['deny_coach']
     conn = get_db_connection()
     conn.execute('DELETE FROM Coach WHERE Coach_ID=?', (coachID,))
     conn.execute('DELETE FROM User WHERE User_ID=?', (coachID,))
