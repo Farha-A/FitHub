@@ -8,6 +8,7 @@ body {
     flex-direction: column;
     justify-content: stretch;
     align-items: center;
+    color: midnightblue;
 }
 
 button {
@@ -31,4 +32,24 @@ button {
 
 input {
     margin: 5px;
+}
+
+.checkbox-grid {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr); 
+    gap: 5px;
+    margin: 0;
+    justify-content: center;
+}
+
+.title {
+    text-decoration-line: underline;
+    text-decoration-color: midnightblue;
+    text-decoration-style: solid;
+    font-size: large;
+    margin-bottom: 5px;
+}
+
+input {
+    padding: 10px 250px 10px 10px;
 }
