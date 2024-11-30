@@ -3,11 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <title>Login</title>
+    {# link to stylesheet #}
     <link rel="stylesheet" href="{{ url_for('static', filename='login.css') }}">
 </head>
 <body>
 <h3>Login</h3>
-
+{# space for showing a message when a user enters unavailable credentials #}
 {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
         {% for category, message in messages %}
@@ -16,6 +17,7 @@
     {% endif %}
 {% endwith %}
 
+{# take user email & password for login #}
 <form action="/login" method="POST">
     <p class="pgo">
         <input type="Email" id="Email" name="Email" placeholder="Email">
@@ -23,15 +25,19 @@
     <p class="pgo">
         <input type="password" id="password" name="password" placeholder="Password">
     </p>
+    {# button to login #}
     <div class="go-button-container">
         <button type="submit" value="Go!" class="go">Go!</button>
     </div>
 </form>
 
+{# options if the user cannot login #}
 <p class="noacc">
     <span>Cannot Login?</span>
     <div class="button-container">
+        {# if they forgot their password #}
         <button type="button" class="forgot">Forgot Password?</button>
+        {# if they don't have an account yet #}
         <form method="POST" action="/signUp" style="margin: 0;">
             <button type="submit" class="signup">Sign Up!</button>
         </form>

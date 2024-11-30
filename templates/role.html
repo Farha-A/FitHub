@@ -3,16 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <title>Role</title>
+    {# link to stylesheet #}
     <link rel="stylesheet" href="{{ url_for('static', filename='role.css') }}">
 </head>
 <body>
 <div class="gradient-container">
     <div class="role">
         <h3>Choose your role:</h3>
+        {# redirect new user to trainee sign-up page #}
         <form action="/trainee">
             <button type="submit" value="Trainee">Trainee</button>
         </form>
         <form action="/coach">
+            {# redirect new user to coach sign-up page #}
             <button type="submit" value="Coach">Coach</button>
         </form>
     </div>

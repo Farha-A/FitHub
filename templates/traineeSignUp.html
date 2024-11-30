@@ -3,11 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <title>Trainee</title>
+    {# link to stylesheet #}
     <link rel="stylesheet" href="{{ url_for('static', filename='traineesignup.css') }}">
 </head>
 <body>
 <div class="form-container">
 <h1>Trainee</h1>
+{# Take trainee's information for sign-up #}
 <form action="/trainee" method="POST">
     <p>
         <input type="text" id="username" name="username" required placeholder="Name">
@@ -39,6 +41,7 @@
         </div>
         <br><div class="title">
         Check all your interests: <br></div>
+        {# loop on all interests sent from backend to show them #}
         <div class="checkbox-grid">
             {% for interest in interests %}
                     <input type="checkbox" id="interest-{{ interest[0] }}" name="interests" value="{{ interest[0] }}">
@@ -48,6 +51,7 @@
     <br>
     <input type="password" id="password" name="password" required placeholder="Password">
     <br>
+    {# button to sign-up trainee #}
     <button type="submit">Sign Up!</button>
     </p>
 </form>
