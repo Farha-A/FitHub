@@ -1,0 +1,96 @@
+body {
+    margin: 0;
+    padding: 0;
+    background: linear-gradient(to bottom, cornflowerblue, deepskyblue);
+    font-family: sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+button {
+    backface-visibility: hidden;
+    background-color: #405cf5;
+    border-radius: 6px;
+    border-width: 0;
+    box-shadow: rgba(50, 50, 93, 0.1) 0 0 0 1px inset, rgba(50, 50, 93, 0.1) 0 2px 5px 0, rgba(0, 0, 0, 0.07) 0 1px 1px 0;
+    color: #fff;
+    cursor: pointer;
+    font-family: sans-serif;
+    font-size: 100%;
+    height: 44px;
+    line-height: 1.15;
+    margin: 12px 0 0;
+    padding: 0 25px;
+    position: relative;
+    text-align: center;
+    touch-action: manipulation;
+}
+
+.go {
+    background-color: seagreen;
+}
+
+.go-button-container {
+    text-align: center; 
+}
+
+.forgot, .signup {
+    height: 30px; 
+    font-size: 90%; 
+    padding: 0 15px; 
+    margin: 0 5px; 
+    display: inline-block;
+}
+
+.forgot {
+    background-color: indianred;
+}
+
+.signup {
+    background-color: #405cf5;
+}
+
+p {
+    padding: 10px;
+    font-family: sans-serif;
+}
+
+.noacc {
+    font-size: small;
+    color: midnightblue;
+    text-align: center; 
+}
+
+.button-container {
+    display: flex; 
+    justify-content: center; 
+    align-items: center;
+    gap: 10px; 
+}
+
+h3 {
+    display: inline-block;
+    background-color: white;
+    color: midnightblue;
+    padding: 20px 40px;
+    border-radius: 15px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    margin-bottom: 30px;
+    text-align: center;
+}
+
+.message {
+    font-size: x-small;
+    color: midnightblue;
+}
+
+input {
+    padding: 10px 250px 10px 10px;
+}
+
+.pgo {
+    padding: 1px;
+}
