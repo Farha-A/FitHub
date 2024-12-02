@@ -335,7 +335,7 @@ def posts():
 
     return redirect(url_for('login'))
 
-@app.route('/add_comment', methods=['POST'])
+@app.route('/add_comment/<int:post_id>', methods=['POST'])
 def add_comment(post_id):
     if 'User_ID' in session:
         User_ID = session['User_ID']
