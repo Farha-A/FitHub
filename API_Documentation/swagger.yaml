@@ -1,0 +1,363 @@
+openapi: 3.0.0
+info:
+  title: Fithub
+  version: 1.0.0
+servers:
+  - url: http://127.0.0.1:5000
+paths:
+  /:
+    get:
+      tags:
+        - default
+      summary: Home Page
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /signUp:
+    get:
+      tags:
+        - default
+      summary: signUp
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /login:
+    get:
+      tags:
+        - default
+      summary: login page
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+    post:
+      tags:
+        - default
+      summary: Login
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              properties:
+                Email:
+                  type: string
+                  example: admin@admin.com
+                password:
+                  type: string
+                  example: adminpw
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /redirect:
+    get:
+      tags:
+        - default
+      summary: redirect
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /trainee:
+    get:
+      tags:
+        - default
+      summary: trainee page
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+    post:
+      tags:
+        - default
+      summary: Trainee
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              properties:
+                username:
+                  type: string
+                  example: fries
+                email:
+                  type: string
+                  example: fries@gmail.com
+                age:
+                  type: integer
+                  example: '19'
+                weight:
+                  type: integer
+                  example: '54'
+                height:
+                  type: integer
+                  example: '162'
+                gender:
+                  type: string
+                  example: Female
+                exercise:
+                  type: string
+                  example: Beginner
+                interests:
+                  type: integer
+                  example: '1'
+                password:
+                  type: string
+                  example: fries
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /posts:
+    get:
+      tags:
+        - default
+      summary: Posts Page
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+    post:
+      tags:
+        - default
+      summary: Post a post
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              properties:
+                content:
+                  type: string
+                  example: post done
+                post_media:
+                  type: string
+                tags:
+                  type: integer
+                  example: '1'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /add_comment/41:
+    post:
+      tags:
+        - default
+      summary: add comment to post
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              properties:
+                comment_content:
+                  type: string
+                  example: comment done
+                post_id:
+                  type: integer
+                  example: '41'
+      parameters:
+        - name: Content-Type
+          in: header
+          schema:
+            type: string
+          example: application/x-www-form-urlencoded
+        - name: post_id
+          in: header
+          schema:
+            type: integer
+          example: '41'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /add_recipe:
+    get:
+      tags:
+        - default
+      summary: Add Recepie Page
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+    post:
+      tags:
+        - default
+      summary: Add Recipie
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              properties:
+                Recipe_Name:
+                  type: string
+                  example: kofta
+                Meal_Type:
+                  type: string
+                  example: Breakfast
+                Nutrition_Information:
+                  type: string
+                  example: '60 calory '
+                Media:
+                  type: string
+                  example: media
+                Steps:
+                  type: integer
+                  example: '5'
+                Ingredients:
+                  type: string
+                  example: meat
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /recipes:
+    get:
+      tags:
+        - default
+      summary: recipes
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /recipes/8:
+    get:
+      tags:
+        - default
+      summary: specific recipe
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /coaches:
+    get:
+      tags:
+        - default
+      summary: coaches
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /exercises:
+    get:
+      tags:
+        - default
+      summary: exercises
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /exercise/3:
+    get:
+      tags:
+        - default
+      summary: specific exercise
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /logout:
+    get:
+      tags:
+        - default
+      summary: logout
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /add_exercises:
+    post:
+      tags:
+        - default
+      summary: Add exercises
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              properties:
+                Name:
+                  type: string
+                  example: pull up
+                Media:
+                  type: string
+                  example: media
+                Duration:
+                  type: integer
+                  example: '60'
+                Equipment:
+                  type: string
+                  example: dumble
+                Description:
+                  type: string
+                  example: pull yourself up
+                Muscles_Targeted:
+                  type: string
+                  example: arm
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /admin:
+    get:
+      tags:
+        - default
+      summary: admin page
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /verify_coach:
+    post:
+      tags:
+        - default
+      summary: Verify Coach
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              properties:
+                verify_coach:
+                  type: integer
+                  example: '56'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+  /deny_coach:
+    post:
+      tags:
+        - default
+      summary: deny_coach
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              properties:
+                deny_coach:
+                  type: integer
+                  example: '57'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
