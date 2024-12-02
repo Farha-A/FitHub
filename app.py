@@ -104,6 +104,7 @@ def logout():
 # trainee sign-up
 @app.route('/trainee', methods=["GET", "POST"])
 def traineeSignUp():
+    email_exists = False
     # save the trainee's information based on their input
     if request.method == 'POST':
         role = "Trainee"
@@ -129,39 +130,43 @@ def traineeSignUp():
         userid_count = conn.execute('SELECT COUNT(*) FROM User').fetchone()
         userid = str(userid_count[0] + 1)
 
-        # add trainee to user table
-        conn.execute('INSERT INTO User (User_ID, Name, Email, Age, Gender, Password, Role, Interests) '
-                     'VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-                     (userid, username, email, age, gender, password, role, interests))
+        # check if email already used for another user
+        email_check = conn.execute('SELECT * FROM User WHERE Email = ?', (email,)).fetchone()
+        if not email_check:
+            # add trainee to user table
+            conn.execute('INSERT INTO User (User_ID, Name, Email, Age, Gender, Password, Role, Interests) '
+                         'VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+                         (userid, username, email, age, gender, password, role, interests))
 
-        # add trainee to trainee table
-        conn.execute('INSERT INTO Trainee (Trainee_ID, Weight_kg, Height_m, BMI, Exercise_Level) '
-                     'VALUES (?, ?, ?, ?, ?)',
-                     (userid, weight, height, bmi, exercise))
+            # add trainee to trainee table
+            conn.execute('INSERT INTO Trainee (Trainee_ID, Weight_kg, Height_m, BMI, Exercise_Level) '
+                         'VALUES (?, ?, ?, ?, ?)',
+                         (userid, weight, height, bmi, exercise))
 
-        # calculate new planid
-        planid_count = conn.execute('SELECT COUNT(*) FROM Plan').fetchone()
-        planid = str(planid_count[0] + 1)
+            # calculate new planid
+            planid_count = conn.execute('SELECT COUNT(*) FROM Plan').fetchone()
+            planid = str(planid_count[0] + 1)
 
-        # add basic plan based on gender
-        if gender == "Female":
-            init_plan = conn.execute('SELECT Plan FROM Plan WHERE Trainee_ID = ?', ("2",)).fetchone()
-            conn.execute('INSERT INTO Plan (Plan_ID, Trainee_ID, Plan) VALUES (?, ?, ?)',
-                         (planid, userid, init_plan[0]))
-        else:
-            init_plan = conn.execute('SELECT Plan FROM Plan WHERE Trainee_ID = ?', ("38",)).fetchone()
-            print(init_plan)
-            conn.execute('INSERT INTO Plan (Plan_ID, Trainee_ID, Plan) VALUES (?, ?, ?)',
-                         (planid, userid, init_plan[0]))
-        conn.commit()
-        conn.close()
-        # return user to login page
-        return redirect(url_for('login'))
+            # add basic plan based on gender
+            if gender == "Female":
+                init_plan = conn.execute('SELECT Plan FROM Plan WHERE Trainee_ID = ?', ("2",)).fetchone()
+                conn.execute('INSERT INTO Plan (Plan_ID, Trainee_ID, Plan) VALUES (?, ?, ?)',
+                             (planid, userid, init_plan[0]))
+            else:
+                init_plan = conn.execute('SELECT Plan FROM Plan WHERE Trainee_ID = ?', ("38",)).fetchone()
+                print(init_plan)
+                conn.execute('INSERT INTO Plan (Plan_ID, Trainee_ID, Plan) VALUES (?, ?, ?)',
+                             (planid, userid, init_plan[0]))
+            conn.commit()
+            conn.close()
+            # return user to login page
+            return redirect(url_for('login'))
+        email_exists = True
     # get all interests from database to show in form
     conn = get_db_connection()
     all_interests = conn.execute('SELECT * FROM Interest').fetchall()
     conn.close()
-    return render_template("traineeSignUp.html", interests=all_interests)
+    return render_template("traineeSignUp.html", interests=all_interests, email_exists=email_exists)
 
 
 # coach sign-up
