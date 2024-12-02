@@ -1,0 +1,843 @@
+{
+    "collection": {
+        "info": {
+            "_postman_id": "893251ee-b619-4e54-ace4-79ea75844d8f",
+            "name": "Fithub",
+            "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+            "updatedAt": "2024-12-02T20:23:18.000Z",
+            "createdAt": "2024-12-02T18:38:14.000Z",
+            "lastUpdatedBy": "39036780",
+            "uid": "39036780-893251ee-b619-4e54-ace4-79ea75844d8f"
+        },
+        "item": [
+            {
+                "name": "Home Page",
+                "id": "cd9cba57-602f-4d3d-b074-abac6a5291d1",
+                "protocolProfileBehavior": {
+                    "disableBodyPruning": true
+                },
+                "request": {
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                        "raw": "http://127.0.0.1:5000",
+                        "protocol": "http",
+                        "host": [
+                            "127",
+                            "0",
+                            "0",
+                            "1"
+                        ],
+                        "port": "5000"
+                    }
+                },
+                "response": [],
+                "uid": "39036780-cd9cba57-602f-4d3d-b074-abac6a5291d1"
+            },
+            {
+                "name": "signUp",
+                "id": "a7ec74ff-b25b-405c-b870-bbec875100c2",
+                "protocolProfileBehavior": {
+                    "disableBodyPruning": true
+                },
+                "request": {
+                    "method": "GET",
+                    "header": [],
+                    "body": {
+                        "mode": "urlencoded",
+                        "urlencoded": []
+                    },
+                    "url": {
+                        "raw": "http://127.0.0.1:5000/signUp",
+                        "protocol": "http",
+                        "host": [
+                            "127",
+                            "0",
+                            "0",
+                            "1"
+                        ],
+                        "port": "5000",
+                        "path": [
+                            "signUp"
+                        ]
+                    }
+                },
+                "response": [],
+                "uid": "39036780-a7ec74ff-b25b-405c-b870-bbec875100c2"
+            },
+            {
+                "name": "login page",
+                "id": "4519d356-2d02-4e64-9eb4-adc61756ca13",
+                "protocolProfileBehavior": {
+                    "disableBodyPruning": true
+                },
+                "request": {
+                    "method": "GET",
+                    "header": [],
+                    "body": {
+                        "mode": "urlencoded",
+                        "urlencoded": []
+                    },
+                    "url": {
+                        "raw": "http://127.0.0.1:5000/login",
+                        "protocol": "http",
+                        "host": [
+                            "127",
+                            "0",
+                            "0",
+                            "1"
+                        ],
+                        "port": "5000",
+                        "path": [
+                            "login"
+                        ]
+                    }
+                },
+                "response": [],
+                "uid": "39036780-4519d356-2d02-4e64-9eb4-adc61756ca13"
+            },
+            {
+                "name": "Login",
+                "id": "3df16882-c632-4d0f-987b-75984021439e",
+                "protocolProfileBehavior": {
+                    "disableBodyPruning": true
+                },
+                "request": {
+                    "method": "POST",
+                    "header": [],
+                    "body": {
+                        "mode": "urlencoded",
+                        "urlencoded": [
+                            {
+                                "key": "Email",
+                                "value": "trainee1@trainee.com",
+                                "type": "text"
+                            },
+                            {
+                                "key": "password",
+                                "value": "password123",
+                                "type": "text"
+                            },
+                            {
+                                "key": "Email",
+                                "value": "coach1@coach.com",
+                                "type": "text",
+                                "disabled": true
+                            },
+                            {
+                                "key": "password",
+                                "value": "password123",
+                                "type": "text",
+                                "disabled": true
+                            },
+                            {
+                                "key": "Email",
+                                "value": "admin@admin.com",
+                                "type": "text",
+                                "disabled": true
+                            },
+                            {
+                                "key": "password",
+                                "value": "adminpw",
+                                "type": "text",
+                                "disabled": true
+                            }
+                        ]
+                    },
+                    "url": {
+                        "raw": "http://127.0.0.1:5000/login",
+                        "protocol": "http",
+                        "host": [
+                            "127",
+                            "0",
+                            "0",
+                            "1"
+                        ],
+                        "port": "5000",
+                        "path": [
+                            "login"
+                        ]
+                    }
+                },
+                "response": [],
+                "uid": "39036780-3df16882-c632-4d0f-987b-75984021439e"
+            },
+            {
+                "name": "redirect",
+                "id": "c747cd4a-3ce0-47a9-835f-3cb7d9a4e960",
+                "protocolProfileBehavior": {
+                    "disableBodyPruning": true
+                },
+                "request": {
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                        "raw": "http://127.0.0.1:5000/redirect",
+                        "protocol": "http",
+                        "host": [
+                            "127",
+                            "0",
+                            "0",
+                            "1"
+                        ],
+                        "port": "5000",
+                        "path": [
+                            "redirect"
+                        ]
+                    }
+                },
+                "response": [],
+                "uid": "39036780-c747cd4a-3ce0-47a9-835f-3cb7d9a4e960"
+            },
+            {
+                "name": "trainee page",
+                "id": "180e7684-0d63-4982-abca-30766257e404",
+                "protocolProfileBehavior": {
+                    "disableBodyPruning": true
+                },
+                "request": {
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                        "raw": "http://127.0.0.1:5000/trainee",
+                        "protocol": "http",
+                        "host": [
+                            "127",
+                            "0",
+                            "0",
+                            "1"
+                        ],
+                        "port": "5000",
+                        "path": [
+                            "trainee"
+                        ]
+                    }
+                },
+                "response": [],
+                "uid": "39036780-180e7684-0d63-4982-abca-30766257e404"
+            },
+            {
+                "name": "Trainee",
+                "id": "ce685576-72da-49f5-8fc7-1ec00624ffa6",
+                "protocolProfileBehavior": {
+                    "disableBodyPruning": true
+                },
+                "request": {
+                    "method": "POST",
+                    "header": [],
+                    "body": {
+                        "mode": "urlencoded",
+                        "urlencoded": [
+                            {
+                                "key": "username",
+                                "value": "fries",
+                                "type": "text"
+                            },
+                            {
+                                "key": "email",
+                                "value": "fries@gmail.com",
+                                "type": "text"
+                            },
+                            {
+                                "key": "age",
+                                "value": "19",
+                                "type": "text"
+                            },
+                            {
+                                "key": "weight",
+                                "value": "54",
+                                "type": "text"
+                            },
+                            {
+                                "key": "height",
+                                "value": "162",
+                                "type": "text"
+                            },
+                            {
+                                "key": "gender",
+                                "value": "Female",
+                                "type": "text"
+                            },
+                            {
+                                "key": "exercise",
+                                "value": "Beginner",
+                                "type": "text"
+                            },
+                            {
+                                "key": "interests",
+                                "value": "1",
+                                "type": "text"
+                            },
+                            {
+                                "key": "password",
+                                "value": "fries",
+                                "type": "text"
+                            }
+                        ]
+                    },
+                    "url": {
+                        "raw": "http://127.0.0.1:5000/trainee",
+                        "protocol": "http",
+                        "host": [
+                            "127",
+                            "0",
+                            "0",
+                            "1"
+                        ],
+                        "port": "5000",
+                        "path": [
+                            "trainee"
+                        ]
+                    }
+                },
+                "response": [],
+                "uid": "39036780-ce685576-72da-49f5-8fc7-1ec00624ffa6"
+            },
+            {
+                "name": "Posts Page",
+                "id": "11c7cf70-1a67-427c-873e-4cd3a2c18aa6",
+                "protocolProfileBehavior": {
+                    "disableBodyPruning": true
+                },
+                "request": {
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                        "raw": "http://127.0.0.1:5000/posts",
+                        "protocol": "http",
+                        "host": [
+                            "127",
+                            "0",
+                            "0",
+                            "1"
+                        ],
+                        "port": "5000",
+                        "path": [
+                            "posts"
+                        ]
+                    }
+                },
+                "response": [],
+                "uid": "39036780-11c7cf70-1a67-427c-873e-4cd3a2c18aa6"
+            },
+            {
+                "name": "Post a post",
+                "id": "85ed9f44-98c6-4ace-bf9b-83d4392981e7",
+                "protocolProfileBehavior": {
+                    "disableBodyPruning": true
+                },
+                "request": {
+                    "method": "POST",
+                    "header": [],
+                    "body": {
+                        "mode": "urlencoded",
+                        "urlencoded": [
+                            {
+                                "key": "content",
+                                "value": "post done",
+                                "type": "text"
+                            },
+                            {
+                                "key": "post_media",
+                                "value": "",
+                                "type": "text"
+                            },
+                            {
+                                "key": "tags",
+                                "value": "1",
+                                "type": "text"
+                            }
+                        ]
+                    },
+                    "url": {
+                        "raw": "http://127.0.0.1:5000/posts",
+                        "protocol": "http",
+                        "host": [
+                            "127",
+                            "0",
+                            "0",
+                            "1"
+                        ],
+                        "port": "5000",
+                        "path": [
+                            "posts"
+                        ]
+                    }
+                },
+                "response": [],
+                "uid": "39036780-85ed9f44-98c6-4ace-bf9b-83d4392981e7"
+            },
+            {
+                "name": "add comment to post",
+                "id": "0dff3b1d-b5e3-429e-9af3-b51a2167c6de",
+                "protocolProfileBehavior": {
+                    "disableBodyPruning": true
+                },
+                "request": {
+                    "method": "POST",
+                    "header": [
+                        {
+                            "key": "Content-Type",
+                            "value": "application/x-www-form-urlencoded",
+                            "type": "text"
+                        },
+                        {
+                            "key": "post_id",
+                            "value": "41",
+                            "type": "text"
+                        }
+                    ],
+                    "body": {
+                        "mode": "urlencoded",
+                        "urlencoded": [
+                            {
+                                "key": "comment_content",
+                                "value": "comment done",
+                                "type": "text"
+                            },
+                            {
+                                "key": "post_id",
+                                "value": "41",
+                                "type": "text"
+                            }
+                        ]
+                    },
+                    "url": {
+                        "raw": "http://127.0.0.1:5000/add_comment/41",
+                        "protocol": "http",
+                        "host": [
+                            "127",
+                            "0",
+                            "0",
+                            "1"
+                        ],
+                        "port": "5000",
+                        "path": [
+                            "add_comment",
+                            "41"
+                        ]
+                    }
+                },
+                "response": [],
+                "uid": "39036780-0dff3b1d-b5e3-429e-9af3-b51a2167c6de"
+            },
+            {
+                "name": "Add Recepie Page",
+                "id": "711ed383-2a1d-46d4-baf4-2484e4aef4bb",
+                "protocolProfileBehavior": {
+                    "disableBodyPruning": true
+                },
+                "request": {
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                        "raw": "http://127.0.0.1:5000/add_recipe",
+                        "protocol": "http",
+                        "host": [
+                            "127",
+                            "0",
+                            "0",
+                            "1"
+                        ],
+                        "port": "5000",
+                        "path": [
+                            "add_recipe"
+                        ]
+                    }
+                },
+                "response": [],
+                "uid": "39036780-711ed383-2a1d-46d4-baf4-2484e4aef4bb"
+            },
+            {
+                "name": "Add Recipie",
+                "id": "108883cc-333e-421c-98ab-238a34d0d828",
+                "protocolProfileBehavior": {
+                    "disableBodyPruning": true
+                },
+                "request": {
+                    "method": "POST",
+                    "header": [],
+                    "body": {
+                        "mode": "urlencoded",
+                        "urlencoded": [
+                            {
+                                "key": "Recipe_Name",
+                                "value": "kofta",
+                                "type": "text"
+                            },
+                            {
+                                "key": "Meal_Type",
+                                "value": "Breakfast",
+                                "type": "text"
+                            },
+                            {
+                                "key": "Nutrition_Information",
+                                "value": "60 calory ",
+                                "type": "text"
+                            },
+                            {
+                                "key": "Media",
+                                "value": "media",
+                                "type": "text"
+                            },
+                            {
+                                "key": "Steps",
+                                "value": "5",
+                                "type": "text"
+                            },
+                            {
+                                "key": "Ingredients",
+                                "value": "meat",
+                                "type": "text"
+                            }
+                        ]
+                    },
+                    "url": {
+                        "raw": "http://127.0.0.1:5000/add_recipe",
+                        "protocol": "http",
+                        "host": [
+                            "127",
+                            "0",
+                            "0",
+                            "1"
+                        ],
+                        "port": "5000",
+                        "path": [
+                            "add_recipe"
+                        ]
+                    }
+                },
+                "response": [],
+                "uid": "39036780-108883cc-333e-421c-98ab-238a34d0d828"
+            },
+            {
+                "name": "recipes",
+                "id": "81c5cbac-a6dd-4cb6-92cd-38691ef917d7",
+                "protocolProfileBehavior": {
+                    "disableBodyPruning": true
+                },
+                "request": {
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                        "raw": "http://127.0.0.1:5000/recipes",
+                        "protocol": "http",
+                        "host": [
+                            "127",
+                            "0",
+                            "0",
+                            "1"
+                        ],
+                        "port": "5000",
+                        "path": [
+                            "recipes"
+                        ]
+                    }
+                },
+                "response": [],
+                "uid": "39036780-81c5cbac-a6dd-4cb6-92cd-38691ef917d7"
+            },
+            {
+                "name": "specific recipe",
+                "id": "db548375-71e0-4142-9b4f-4e8d05774c0d",
+                "protocolProfileBehavior": {
+                    "disableBodyPruning": true
+                },
+                "request": {
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                        "raw": "http://127.0.0.1:5000/recipes/8",
+                        "protocol": "http",
+                        "host": [
+                            "127",
+                            "0",
+                            "0",
+                            "1"
+                        ],
+                        "port": "5000",
+                        "path": [
+                            "recipes",
+                            "8"
+                        ]
+                    }
+                },
+                "response": [],
+                "uid": "39036780-db548375-71e0-4142-9b4f-4e8d05774c0d"
+            },
+            {
+                "name": "coaches",
+                "id": "334623aa-63c1-4546-b46f-2ed2f8b6983b",
+                "protocolProfileBehavior": {
+                    "disableBodyPruning": true
+                },
+                "request": {
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                        "raw": "http://127.0.0.1:5000/coaches",
+                        "protocol": "http",
+                        "host": [
+                            "127",
+                            "0",
+                            "0",
+                            "1"
+                        ],
+                        "port": "5000",
+                        "path": [
+                            "coaches"
+                        ]
+                    }
+                },
+                "response": [],
+                "uid": "39036780-334623aa-63c1-4546-b46f-2ed2f8b6983b"
+            },
+            {
+                "name": "exercises",
+                "id": "1dd1abbf-c3d9-4269-a4dd-a942ccbad8aa",
+                "protocolProfileBehavior": {
+                    "disableBodyPruning": true
+                },
+                "request": {
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                        "raw": "http://127.0.0.1:5000/exercises",
+                        "protocol": "http",
+                        "host": [
+                            "127",
+                            "0",
+                            "0",
+                            "1"
+                        ],
+                        "port": "5000",
+                        "path": [
+                            "exercises"
+                        ]
+                    }
+                },
+                "response": [],
+                "uid": "39036780-1dd1abbf-c3d9-4269-a4dd-a942ccbad8aa"
+            },
+            {
+                "name": "specific exercise",
+                "id": "3cd2e577-204f-42fd-a82d-0dd7a4eda721",
+                "protocolProfileBehavior": {
+                    "disableBodyPruning": true
+                },
+                "request": {
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                        "raw": "http://127.0.0.1:5000/exercise/3",
+                        "protocol": "http",
+                        "host": [
+                            "127",
+                            "0",
+                            "0",
+                            "1"
+                        ],
+                        "port": "5000",
+                        "path": [
+                            "exercise",
+                            "3"
+                        ]
+                    }
+                },
+                "response": [],
+                "uid": "39036780-3cd2e577-204f-42fd-a82d-0dd7a4eda721"
+            },
+            {
+                "name": "logout",
+                "id": "8ebbd534-ca5f-4f14-a5c9-332dfb699041",
+                "protocolProfileBehavior": {
+                    "disableBodyPruning": true
+                },
+                "request": {
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                        "raw": "http://127.0.0.1:5000/logout",
+                        "protocol": "http",
+                        "host": [
+                            "127",
+                            "0",
+                            "0",
+                            "1"
+                        ],
+                        "port": "5000",
+                        "path": [
+                            "logout"
+                        ]
+                    }
+                },
+                "response": [],
+                "uid": "39036780-8ebbd534-ca5f-4f14-a5c9-332dfb699041"
+            },
+            {
+                "name": "Add exercises",
+                "id": "732b383c-2e7c-4a15-a9f5-adf4e53d9bb0",
+                "protocolProfileBehavior": {
+                    "disableBodyPruning": true
+                },
+                "request": {
+                    "method": "POST",
+                    "header": [],
+                    "body": {
+                        "mode": "urlencoded",
+                        "urlencoded": [
+                            {
+                                "key": "Name",
+                                "value": "pull up",
+                                "type": "text"
+                            },
+                            {
+                                "key": "Media",
+                                "value": "media",
+                                "type": "text"
+                            },
+                            {
+                                "key": "Duration",
+                                "value": "60",
+                                "type": "text"
+                            },
+                            {
+                                "key": "Equipment",
+                                "value": "dumble",
+                                "type": "text"
+                            },
+                            {
+                                "key": "Description",
+                                "value": "pull yourself up",
+                                "type": "text"
+                            },
+                            {
+                                "key": "Muscles_Targeted",
+                                "value": "arm",
+                                "type": "text"
+                            }
+                        ]
+                    },
+                    "url": {
+                        "raw": "http://127.0.0.1:5000/add_exercises",
+                        "protocol": "http",
+                        "host": [
+                            "127",
+                            "0",
+                            "0",
+                            "1"
+                        ],
+                        "port": "5000",
+                        "path": [
+                            "add_exercises"
+                        ]
+                    }
+                },
+                "response": [],
+                "uid": "39036780-732b383c-2e7c-4a15-a9f5-adf4e53d9bb0"
+            },
+            {
+                "name": "admin page",
+                "id": "a16932c4-138f-4bac-a5bc-d527e6306ebf",
+                "protocolProfileBehavior": {
+                    "disableBodyPruning": true
+                },
+                "request": {
+                    "method": "GET",
+                    "header": [],
+                    "url": {
+                        "raw": "http://127.0.0.1:5000/admin",
+                        "protocol": "http",
+                        "host": [
+                            "127",
+                            "0",
+                            "0",
+                            "1"
+                        ],
+                        "port": "5000",
+                        "path": [
+                            "admin"
+                        ]
+                    }
+                },
+                "response": [],
+                "uid": "39036780-a16932c4-138f-4bac-a5bc-d527e6306ebf"
+            },
+            {
+                "name": "Verify Coach",
+                "id": "4556ad5d-d849-4952-97d4-6e58945bcbe3",
+                "protocolProfileBehavior": {
+                    "disableBodyPruning": true
+                },
+                "request": {
+                    "method": "POST",
+                    "header": [],
+                    "body": {
+                        "mode": "urlencoded",
+                        "urlencoded": [
+                            {
+                                "key": "verify_coach",
+                                "value": "56",
+                                "type": "text"
+                            }
+                        ]
+                    },
+                    "url": {
+                        "raw": "http://127.0.0.1:5000/verify_coach",
+                        "protocol": "http",
+                        "host": [
+                            "127",
+                            "0",
+                            "0",
+                            "1"
+                        ],
+                        "port": "5000",
+                        "path": [
+                            "verify_coach"
+                        ]
+                    }
+                },
+                "response": [],
+                "uid": "39036780-4556ad5d-d849-4952-97d4-6e58945bcbe3"
+            },
+            {
+                "name": "deny_coach",
+                "id": "f7af9cd5-5a43-4282-b128-7a8d87f0ebee",
+                "protocolProfileBehavior": {
+                    "disableBodyPruning": true
+                },
+                "request": {
+                    "method": "POST",
+                    "header": [],
+                    "body": {
+                        "mode": "urlencoded",
+                        "urlencoded": [
+                            {
+                                "key": "deny_coach",
+                                "value": "57",
+                                "type": "text",
+                                "equals": true
+                            }
+                        ]
+                    },
+                    "url": {
+                        "raw": "http://127.0.0.1:5000/deny_coach",
+                        "protocol": "http",
+                        "host": [
+                            "127",
+                            "0",
+                            "0",
+                            "1"
+                        ],
+                        "port": "5000",
+                        "path": [
+                            "deny_coach"
+                        ]
+                    }
+                },
+                "response": [],
+                "uid": "39036780-f7af9cd5-5a43-4282-b128-7a8d87f0ebee"
+            }
+        ]
+    }
+}
