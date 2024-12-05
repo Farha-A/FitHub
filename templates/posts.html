@@ -8,7 +8,7 @@
 </head>
 <body>
     <div class="container">
-        <!-- Share Post Section -->
+        <!-- share posts -->
         <div class="share-post-frame">
             <h2>Share a Post</h2>
             <form class="post-form" method="POST" action="{{ url_for('posts') }}" enctype="multipart/form-data">
@@ -17,7 +17,7 @@
                 </div>
                 <div>
                     <label for="media">Upload Media:</label>
-                    <input type="file" name="media" accept="image/*,video/*" class="custom-file-input">
+                    <input type="file" name="media" accept="image/,video/" class="custom-file-input">
                 </div>
                 <div>
                     <label for="tags">Select Tags:</label>
@@ -33,13 +33,13 @@
             </form>
         </div>
 
-        <!-- Recent Posts Section -->
+        <!--- Recent posts -->
         <h3>Recent Posts</h3>
         {% for post_data in posts_with_comments %}
         <div class="post">
             <div class="user-info">
                 <img src="{{ url_for('static', filename='user_images/' + post_data['post']['User_ID'] + '.jpg') }}" alt="User Image" class="user-image">
-                <h4>{{ post_data['post']['User_ID'] }}</h4>
+                <h4>{{ post_data['post']['Username'] }}</h4> 
             </div>
             <div class="post-content">
                 <p>{{ post_data['post']['Content'] }}</p>
@@ -55,6 +55,8 @@
                 </div>
                 {% endfor %}
             </div>
+
+            <!-- add comment -->
             <form class="comment-form" method="POST" action="{{ url_for('add_comment', post_id=post_data['post']['Post_ID']) }}">
                 <textarea name="comment_content" required placeholder="Write a comment..."></textarea>
                 <button type="submit" class="colored-comment-button">Add Comment</button>
