@@ -257,88 +257,120 @@ def denyCoach():
     # return to admin page
     return redirect(url_for('unverifiedCoaches'))
 
+
 @app.route('/posts', methods=['GET', 'POST'])
 def posts():
     if 'User_ID' in session:
         User_ID = session['User_ID']
         conn = get_db_connection()
 
-        # user info
+        # User info
         user = conn.execute('SELECT * FROM User WHERE User_ID = ?', (User_ID,)).fetchone()
 
-        #  available tags/Interests
+        # Available tags/Interests
         all_interests = conn.execute('SELECT * FROM Interest').fetchall()
 
         # Share post
         if request.method == 'POST':
             post_content = request.form['content']
-            post_media = request.form.get('media')  # need modifing
-            selected_tags = request.form.getlist('tags')  # Get selected tags"as list"
+            post_media = request.form.get('media')  # Need modifing
+            selected_tags = request.form.getlist('tags')  # Get selected tags "as list"
 
             # Post_ID
             postid_count = conn.execute('SELECT COUNT(*) FROM Post').fetchone()
             postid = postid_count[0] + 1
 
-            # save the post to database
-            tags_str = '/'.join(selected_tags)  # save tags  "seperated by commas"
+            # Save the post to database
+            tags_str = '/'.join(selected_tags)  # Save tags "separated by slash"
             conn.execute(
-                '''INSERT INTO Post (Post_ID, User_ID, Content, Time_Stamp, Media, Tags) 
-                   VALUES (?, ?, ?, datetime("now"), ?, ?)''',
+                '''INSERT INTO Post (Post_ID, User_ID, Content, Time_Stamp, Media, Tags)
+VALUES (?, ?, ?, datetime("now"), ?, ?)''',
                 (postid, user['User_ID'], post_content, post_media, tags_str)
             )
             conn.commit()
 
-        # user interests and corresponding posts
-        user_interests = user['Interests'].split(',')
+        # User interests and corresponding posts
+        user_interests = user['Interests'].split(',')  # user interests as list
         placeholders = ', '.join(['?'] * len(user_interests))
         interest_ids = conn.execute(
             'SELECT Interest_ID FROM Interest WHERE Name IN (' + placeholders + ')',
             tuple(user_interests)
         ).fetchall()
 
-        # list of Interest_IDs
+        # List of Interest_IDs
         interest_ids = [str(row['Interest_ID']) for row in interest_ids]
         placeholders_for_interest_ids = ', '.join(['?'] * len(interest_ids))
 
         posts_by_interest = conn.execute(
-            f'''SELECT * FROM Post WHERE EXISTS (
-                SELECT 1 FROM Interest 
-                WHERE Interest.Interest_ID IN ({placeholders_for_interest_ids}) 
-                  AND Post.Tags LIKE '%' || Interest.Interest_ID || '%') 
-                ORDER BY Time_Stamp DESC''',
+            f'''SELECT *
+FROM Post
+WHERE EXISTS (SELECT 1
+              FROM Interest
+              WHERE Interest.Interest_ID IN ({placeholders_for_interest_ids})
+                AND Post.Tags LIKE '%' || Interest.Interest_ID || '%')
+ORDER BY Time_Stamp DESC''',
             tuple(interest_ids)
         ).fetchall()
 
         remaining_posts = conn.execute(
             f'''SELECT * FROM Post WHERE Post_ID NOT IN (
-                SELECT Post_ID FROM Post 
+                SELECT Post_ID FROM Post
                 WHERE EXISTS (
-                    SELECT 1 FROM Interest 
-                    WHERE Interest.Interest_ID IN ({placeholders_for_interest_ids}) 
-                      AND Post.Tags LIKE '%' || Interest.Interest_ID || '%')) 
+                    SELECT 1 FROM Interest
+                    WHERE Interest.Interest_ID IN ({placeholders_for_interest_ids})
+                      AND Post.Tags LIKE '%' || Interest.Interest_ID || '%'))
                 ORDER BY Time_Stamp DESC''',
             tuple(interest_ids)
         ).fetchall()
 
         all_posts = posts_by_interest + remaining_posts
+        all_posts = sorted(all_posts, key=lambda x: x['Time_Stamp'], reverse=True)
 
-        # comments of the current post
+        # get posts with usernames
+        posts_with_usernames = conn.execute(''' 
+            SELECT Post.*, User.Name 
+            FROM Post 
+            JOIN User ON Post.User_ID = User.User_ID
+        ''').fetchall()
+
+        # Fetch comments with usernames
+        comments_with_usernames = conn.execute(''' fixe
+            SELECT Comment.*, User.Name 
+            FROM Comment 
+            JOIN User ON Comment.User_ID = User.User_ID
+        ''').fetchall()
+
         posts_with_comments = []
-        for post in all_posts:
-            comments = conn.execute(
-                'SELECT * FROM Comment WHERE Post_ID = ? ORDER BY Time_Stamp DESC',
-                (post['Post_ID'],)
-            ).fetchall()
-            posts_with_comments.append({
-                'post': post,
-                'comments': comments
-            })
+        for post in posts_with_usernames:
+            post_data = {
+                'post': {
+                    'Post_ID': post['Post_ID'],
+                    'Content': post['Content'],
+                    'Media': post['Media'],
+                    'Username': post['Name'],
+                    'User_ID': post['User_ID']
+                }
+            }
+
+            # get comments for the current post
+            post_comments = []
+            for comment in comments_with_usernames:
+                if comment['Post_ID'] == post['Post_ID']:
+                    post_comments.append({
+                        'Username': comment['Name'],
+                        'Content': comment['Content']
+                    })
+
+            post_data['comments'] = post_comments
+            posts_with_comments.append(post_data)
 
         conn.close()
 
-        return render_template("posts.html", user=user, posts_with_comments=posts_with_comments, interests=all_interests)
+        return render_template("posts.html", user=user, posts_with_comments=posts_with_comments,
+                               interests=all_interests)
 
     return redirect(url_for('login'))
+
 
 @app.route('/add_comment/<int:post_id>', methods=['POST'])
 def add_comment(post_id):
@@ -346,11 +378,14 @@ def add_comment(post_id):
         User_ID = session['User_ID']
         conn = get_db_connection()
 
+        # get comment ID 
         commentid_count = conn.execute('SELECT COUNT(*) FROM Comment').fetchone()
         commentid = commentid_count[0] + 1
 
-        # Comment_ID
+        # get comment content from the form
         comment_content = request.form['comment_content']
+
+        # Insert comment into  database
         conn.execute(
             'INSERT INTO Comment (Comment_ID, Post_ID, User_ID, Content, Time_Stamp) VALUES (?, ?, ?, ?, datetime("now"))',
             (commentid, post_id, User_ID, comment_content)
@@ -361,14 +396,17 @@ def add_comment(post_id):
         return redirect(url_for('posts'))
     return redirect(url_for('login'))
 
-import random
+
+
+
+
 #Coach can add new recipes
 @app.route('/add_recipe', methods=['GET', 'POST'])
 def add_recipe():
     if 'User_ID' not in session:
         return redirect(url_for('login'))
-    
-    User_ID = str(session['User_ID'])  
+
+    User_ID = str(session['User_ID'])
     if request.method == 'POST':
         recipe_name = request.form.get('Recipe_Name')
         meal_type = request.form.get('Meal_Type')
@@ -384,7 +422,7 @@ def add_recipe():
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
-            
+
             # Find the max Recipe_ID and increment it
             cursor.execute("SELECT MAX(CAST(Recipe_ID AS INTEGER)) FROM Recipe")
             max_id = cursor.fetchone()[0]
@@ -420,7 +458,7 @@ def GetRecipes():
     recipes = cursor.fetchall()
 
     recipes_data = [{
-        'Recipe_ID': str(row[0]), 
+        'Recipe_ID': str(row[0]),
         'Recipe_Name': row[3],
         'Meal_Type': row[2],
         'Media': row[4],
@@ -434,16 +472,16 @@ def GetRecipes():
 
 #Show recipes details when the user click on more details 
 @app.route('/recipes/<recipe_id>', methods=['GET'])
-def GetRecipeDetails(recipe_id): 
+def GetRecipeDetails(recipe_id):
     conn = get_db_connection()
     cursor = conn.cursor()
-    
-    cursor.execute("SELECT * FROM Recipe WHERE Recipe_ID = ?", (recipe_id,))  
+
+    cursor.execute("SELECT * FROM Recipe WHERE Recipe_ID = ?", (recipe_id,))
     recipe = cursor.fetchone()
-    
+
     if recipe is None:
         return "Recipe not found", 404
-    
+
     recipe_data = {
         'Recipe_ID': str(recipe[0]),
         'Recipe_Name': recipe[3],
@@ -456,8 +494,9 @@ def GetRecipeDetails(recipe_id):
 
     return render_template('recipes_detailed.html', recipe=recipe_data)
 
+
 #Show coach details for trainee so that he can add the suitable coach for him
-@app.route('/coaches',methods=['GET'])
+@app.route('/coaches', methods=['GET'])
 def GetCoach():
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -466,36 +505,38 @@ def GetCoach():
     FROM Coach
     """
     cursor.execute(query)
-    result =cursor.fetchall()
+    result = cursor.fetchall()
     coaches_data = [
         {"Coach_ID": row[0], "Verified": row[1], "Description": row[2], "Experience": row[3], "Certificates": row[4],
          } for row in result]
 
     return render_template('coaches_details.html', coaches=coaches_data)
 
+
 #show exercises for users
 @app.route('/exercises', methods=['GET'])
 def GetExercises():
     try:
-        conn =get_db_connection()
+        conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM Exercise")
         Exercises_data = [dict(row) for row in cursor.fetchall()]
         conn.close()
         # Filter out entries with None Exercise_ID
-        valid_exercises=[exercise for exercise in Exercises_data if exercise['Exercise_ID'] is not None]
+        valid_exercises = [exercise for exercise in Exercises_data if exercise['Exercise_ID'] is not None]
 
         return render_template('exercises.html', Exercises=valid_exercises)
     except Exception as e:
         print(f"Error fetching exercises: {e}")
         return "Error fetching exercises", 500
 
+
 #Show more details for user about the clicked exercises
 @app.route('/exercise/<int:exercise_id>', methods=['GET'])
 def GetExerciseDetails(exercise_id):
-    print(f"Received exercise_id: {exercise_id}")  
+    print(f"Received exercise_id: {exercise_id}")
     conn = get_db_connection()
-    conn.row_factory = sqlite3.Row 
+    conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
     query = """
         SELECT Exercise_ID, Coach_ID, Name, Media, Duration,Equipment,Description,Muscles_Targeted
@@ -503,7 +544,7 @@ def GetExerciseDetails(exercise_id):
         WHERE CAST(Exercise_ID AS TEXT) = ?
     """
     cursor.execute(query, (str(exercise_id),))
-    result = cursor.fetchone()  
+    result = cursor.fetchone()
     if result:
         exercise_details = {
             "Exercise_ID": result["Exercise_ID"],
@@ -512,21 +553,22 @@ def GetExerciseDetails(exercise_id):
             "Media": result["Media"],
             "Duration": result["Duration"],
             "Description": result["Description"],
-             "Equipment": result["Equipment"],
-             "Muscles_Targeted": result["Muscles_Targeted"]
+            "Equipment": result["Equipment"],
+            "Muscles_Targeted": result["Muscles_Targeted"]
         }
         return render_template('exercises_detailed.html', exercise=exercise_details)
     else:
         print("No exercise found with this ID.")
         return "Exercise not found", 404
 
+
 #Coach can add new exercises
 @app.route('/add_exercises', methods=['GET', 'POST'])
 def AddExercises():
     if 'User_ID' not in session:
-        return redirect(url_for('login'))  
+        return redirect(url_for('login'))
 
-    User_ID = str(session['User_ID']) 
+    User_ID = str(session['User_ID'])
 
     if request.method == 'POST':
         name = request.form['Name']
@@ -545,12 +587,11 @@ def AddExercises():
             conn = get_db_connection()
             cursor = conn.cursor()
 
-           
-            while True: # add a new random exercise id
+            while True:  # add a new random exercise id
                 random_exercise_id = random.randint(1000, 9999)
                 cursor.execute("SELECT 1 FROM Exercise WHERE Exercise_ID = ?", (random_exercise_id,))
                 if not cursor.fetchone():
-                    break  
+                    break
 
             cursor.execute("""
                 INSERT INTO Exercise (Exercise_ID, Coach_ID, Name, Media, Duration, Equipment, Description, Muscles_Targeted)
@@ -569,142 +610,6 @@ def AddExercises():
             return redirect(url_for('AddExercises'))
 
     return render_template('add_exercise.html')
-
-@app.route('/posts', methods=['GET', 'POST'])
-def posts():
-    if 'User_ID' in session:
-        User_ID = session['User_ID']
-        conn = get_db_connection()
-
-        # User info
-        user = conn.execute('SELECT * FROM User WHERE User_ID = ?', (User_ID,)).fetchone()
-
-        # Available tags/Interests
-        all_interests = conn.execute('SELECT * FROM Interest').fetchall()
-
-        # Share post
-        if request.method == 'POST':
-            post_content = request.form['content']
-            post_media = request.form.get('media')  # Need modifing
-            selected_tags = request.form.getlist('tags')  # Get selected tags "as list"
-
-            # Post_ID
-            postid_count = conn.execute('SELECT COUNT(*) FROM Post').fetchone()
-            postid = postid_count[0] + 1
-
-            # Save the post to database
-            tags_str = '/'.join(selected_tags)  # Save tags "separated by slash"
-            conn.execute(
-                '''INSERT INTO Post (Post_ID, User_ID, Content, Time_Stamp, Media, Tags) 
-                   VALUES (?, ?, ?, datetime("now"), ?, ?)''',
-                (postid, user['User_ID'], post_content, post_media, tags_str)
-            )
-            conn.commit()
-
-        # User interests and corresponding posts
-        user_interests = user['Interests'].split(',')  # user interests as list
-        placeholders = ', '.join(['?'] * len(user_interests))
-        interest_ids = conn.execute(
-            'SELECT Interest_ID FROM Interest WHERE Name IN (' + placeholders + ')',
-            tuple(user_interests)
-        ).fetchall()
-
-        # List of Interest_IDs
-        interest_ids = [str(row['Interest_ID']) for row in interest_ids]
-        placeholders_for_interest_ids = ', '.join(['?'] * len(interest_ids))
-
-        posts_by_interest = conn.execute(
-            f'''SELECT * FROM Post WHERE EXISTS (
-                SELECT 1 FROM Interest 
-                WHERE Interest.Interest_ID IN ({placeholders_for_interest_ids}) 
-                  AND Post.Tags LIKE '%' || Interest.Interest_ID || '%') 
-                ORDER BY Time_Stamp DESC''',
-            tuple(interest_ids)
-        ).fetchall()
-
-        remaining_posts = conn.execute(
-            f'''SELECT * FROM Post WHERE Post_ID NOT IN (
-                SELECT Post_ID FROM Post 
-                WHERE EXISTS (
-                    SELECT 1 FROM Interest 
-                    WHERE Interest.Interest_ID IN ({placeholders_for_interest_ids}) 
-                      AND Post.Tags LIKE '%' || Interest.Interest_ID || '%')) 
-                ORDER BY Time_Stamp DESC''',
-            tuple(interest_ids)
-        ).fetchall()
-
-
-        all_posts = posts_by_interest + remaining_posts
-        all_posts = sorted(all_posts, key=lambda x: x['Time_Stamp'], reverse=True)
-
-        # get posts with usernames
-        posts_with_usernames = conn.execute(''' 
-            SELECT Post.*, User.Name 
-            FROM Post 
-            JOIN User ON Post.User_ID = User.User_ID
-        ''').fetchall()
-
-        # Fetch comments with usernames
-        comments_with_usernames = conn.execute(''' 
-            SELECT Comment.*, User.Name 
-            FROM Comment 
-            JOIN User ON Comment.User_ID = User.User_ID
-        ''').fetchall()
-
-        posts_with_comments = []
-        for post in posts_with_usernames:
-            post_data = {
-                'post': {
-                    'Post_ID': post['Post_ID'],
-                    'Content': post['Content'],
-                    'Media': post['Media'],
-                    'Username': post['Name'],  
-                    'User_ID': post['User_ID']  
-                }
-            }
-
-            # get comments for the current post
-            post_comments = []
-            for comment in comments_with_usernames:
-                if comment['Post_ID'] == post['Post_ID']:
-                    post_comments.append({
-                        'Username': comment['Name'],  
-                        'Content': comment['Content']
-                    })
-
-            post_data['comments'] = post_comments
-            posts_with_comments.append(post_data)
-
-        conn.close()
-
-        return render_template("posts.html", user=user, posts_with_comments=posts_with_comments, interests=all_interests)
-
-    return redirect(url_for('login'))
-
-
-@app.route('/add_comment/<int:post_id>', methods=['POST'])
-def add_comment(post_id):
-    if 'User_ID' in session:
-        User_ID = session['User_ID']
-        conn = get_db_connection()
-
-        # get comment ID 
-        commentid_count = conn.execute('SELECT COUNT(*) FROM Comment').fetchone()
-        commentid = commentid_count[0] + 1
-
-        # get comment content from the form
-        comment_content = request.form['comment_content']
-
-        # Insert comment into  database
-        conn.execute(
-            'INSERT INTO Comment (Comment_ID, Post_ID, User_ID, Content, Time_Stamp) VALUES (?, ?, ?, ?, datetime("now"))',
-            (commentid, post_id, User_ID, comment_content)
-        )
-        conn.commit()
-        conn.close()
-
-        return redirect(url_for('posts'))
-    return redirect(url_for('login'))
 
 
 if __name__ == '__main__':
