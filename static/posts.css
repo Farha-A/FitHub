@@ -144,11 +144,8 @@ input[type="file"]::file-selector-button:hover {
     width: 100%;
 }
 
-.toggle-comments-button:hover {
-    background-color: #567ccf;
-}
 
-/* Add Comment Form */
+/* add Comment */
 .comment-form {
     display: flex;
     align-items: center; 
@@ -173,8 +170,4 @@ input[type="file"]::file-selector-button:hover {
     cursor: pointer;
     border-radius: 6px;
     font-size: 14px;
-}
-
-.comment-form button:hover {
-    background-color: #567ccf;
 }
