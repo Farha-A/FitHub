@@ -257,144 +257,152 @@ def denyCoach():
     # return to admin page
     return redirect(url_for('unverifiedCoaches'))
 
-
+# route to display and create posts
 @app.route('/posts', methods=['GET', 'POST'])
 def posts():
+    # check if a user is logged in
     if 'User_ID' in session:
-        User_ID = session['User_ID']
-        conn = get_db_connection()
+        User_ID = session['User_ID']  # get user id from session
+        conn = get_db_connection()  # connect to database
 
-        # User info
+        # fetch user information from the database
         user = conn.execute('SELECT * FROM User WHERE User_ID = ?', (User_ID,)).fetchone()
 
-        # Available tags/Interests
+        # fetch all available interests from the database
         all_interests = conn.execute('SELECT * FROM Interest').fetchall()
 
-        # Share post
+        # handle post submission
         if request.method == 'POST':
-            post_content = request.form['content']
-            post_media = request.form.get('media')  # Need modifing
-            selected_tags = request.form.getlist('tags')  # Get selected tags "as list"
+            post_content = request.form['content']  # get post content
+            post_media = request.form.get('media')  # get post media (to be handled)
+            selected_tags = request.form.getlist('tags')  # get selected tags as a list
 
-            # Post_ID
+            # calculate new post id
             postid_count = conn.execute('SELECT COUNT(*) FROM Post').fetchone()
-            postid = postid_count[0] + 1
+            postid = postid_count[0] + 1  # increment post count for unique id
 
-            # Save the post to database
-            tags_str = '/'.join(selected_tags)  # Save tags "separated by slash"
+            # get current datetime in standardized format
+            current_time = datetime.now().strftime("%Y-%m-%d %H:%M")
+
+            # save post to database with tags as a slash-separated string
+            tags_str = '/'.join(selected_tags)
             conn.execute(
-                '''INSERT INTO Post (Post_ID, User_ID, Content, Time_Stamp, Media, Tags)
-VALUES (?, ?, ?, datetime("now"), ?, ?)''',
-                (postid, user['User_ID'], post_content, post_media, tags_str)
+                '''INSERT INTO Post (Post_ID, User_ID, Content, Time_Stamp, Media, Tags) 
+                   VALUES (?, ?, ?, ?, ?, ?)''',
+                (postid, user['User_ID'], post_content, current_time, post_media, tags_str)
             )
-            conn.commit()
+            conn.commit()  # commit changes to database
 
-        # User interests and corresponding posts
-        user_interests = user['Interests'].split(',')  # user interests as list
-        placeholders = ', '.join(['?'] * len(user_interests))
-        interest_ids = conn.execute(
-            'SELECT Interest_ID FROM Interest WHERE Name IN (' + placeholders + ')',
-            tuple(user_interests)
-        ).fetchall()
+        # get user interests as a list
+        user_interests = user['Interests'].split(',') if user['Interests'] else []
+        posts_by_interest = []  # initialize posts matching user interests
 
-        # List of Interest_IDs
-        interest_ids = [str(row['Interest_ID']) for row in interest_ids]
-        placeholders_for_interest_ids = ', '.join(['?'] * len(interest_ids))
+        # fetch posts matching user interests
+        if user_interests:
+            placeholders = ', '.join(['?'] * len(user_interests))  # placeholders for query
+            posts_by_interest = conn.execute(
+                f'''SELECT Post.*, User.Name AS Username 
+                    FROM Post 
+                    JOIN User ON Post.User_ID = User.User_ID
+                    WHERE EXISTS (
+                        SELECT 1 FROM Interest 
+                        WHERE Interest.Name IN ({placeholders}) 
+                          AND Post.Tags LIKE '%' || Interest.Interest_ID || '%'
+                    )
+                    ORDER BY Post.Time_Stamp DESC''',
+                tuple(user_interests)
+            ).fetchall()
 
-        posts_by_interest = conn.execute(
-            f'''SELECT *
-FROM Post
-WHERE EXISTS (SELECT 1
-              FROM Interest
-              WHERE Interest.Interest_ID IN ({placeholders_for_interest_ids})
-                AND Post.Tags LIKE '%' || Interest.Interest_ID || '%')
-ORDER BY Time_Stamp DESC''',
-            tuple(interest_ids)
-        ).fetchall()
-
+        # fetch remaining posts not matching user interests
         remaining_posts = conn.execute(
-            f'''SELECT * FROM Post WHERE Post_ID NOT IN (
-                SELECT Post_ID FROM Post
-                WHERE EXISTS (
-                    SELECT 1 FROM Interest
-                    WHERE Interest.Interest_ID IN ({placeholders_for_interest_ids})
-                      AND Post.Tags LIKE '%' || Interest.Interest_ID || '%'))
-                ORDER BY Time_Stamp DESC''',
-            tuple(interest_ids)
+            '''SELECT Post.*, User.Name AS Username 
+               FROM Post 
+               JOIN User ON Post.User_ID = User.User_ID
+               WHERE Post.Post_ID NOT IN (
+                   SELECT Post.Post_ID 
+                   FROM Post 
+                   JOIN Interest 
+                   ON Post.Tags LIKE '%' || Interest.Interest_ID || '%'
+                   WHERE Interest.Name IN ({}))
+               ORDER BY Post.Time_Stamp DESC'''.format(', '.join(['?'] * len(user_interests))),
+            tuple(user_interests)
+        ).fetchall() if user_interests else conn.execute(
+            '''SELECT Post.*, User.Name AS Username 
+               FROM Post 
+               JOIN User ON Post.User_ID = User.User_ID
+               ORDER BY Post.Time_Stamp DESC'''
         ).fetchall()
 
-        all_posts = posts_by_interest + remaining_posts
-        all_posts = sorted(all_posts, key=lambda x: x['Time_Stamp'], reverse=True)
+        # combine and sort all posts by timestamp
+        all_posts = sorted(posts_by_interest + remaining_posts, key=lambda x: x['Time_Stamp'], reverse=True)
 
-        # get posts with usernames
-        posts_with_usernames = conn.execute(''' 
-            SELECT Post.*, User.Name 
-            FROM Post 
-            JOIN User ON Post.User_ID = User.User_ID
-        ''').fetchall()
-
-        # Fetch comments with usernames
-        comments_with_usernames = conn.execute(''' fixe
-            SELECT Comment.*, User.Name 
+        # fetch all comments with usernames
+        comments_with_usernames = conn.execute('''
+            SELECT Comment.*, User.Name AS Username 
             FROM Comment 
             JOIN User ON Comment.User_ID = User.User_ID
         ''').fetchall()
 
+        # combine posts with their respective comments
         posts_with_comments = []
-        for post in posts_with_usernames:
-            post_data = {
+        for post in all_posts:
+            post_comments = [
+                {'Username': comment['Username'], 'Content': comment['Content']}
+                for comment in comments_with_usernames
+                if comment['Post_ID'] == post['Post_ID']
+            ]
+            posts_with_comments.append({
                 'post': {
                     'Post_ID': post['Post_ID'],
                     'Content': post['Content'],
                     'Media': post['Media'],
-                    'Username': post['Name'],
-                    'User_ID': post['User_ID']
-                }
-            }
+                    'Username': post['Username'],
+                    'User_ID': post['User_ID'],
+                    'Time_Stamp': post['Time_Stamp']
+                },
+                'comments': post_comments
+            })
 
-            # get comments for the current post
-            post_comments = []
-            for comment in comments_with_usernames:
-                if comment['Post_ID'] == post['Post_ID']:
-                    post_comments.append({
-                        'Username': comment['Name'],
-                        'Content': comment['Content']
-                    })
+        conn.close()  # close database connection
+        # render posts page with user, posts, and interests
+        return render_template("posts.html", user=user, posts_with_comments=posts_with_comments, interests=all_interests)
 
-            post_data['comments'] = post_comments
-            posts_with_comments.append(post_data)
-
-        conn.close()
-
-        return render_template("posts.html", user=user, posts_with_comments=posts_with_comments,
-                               interests=all_interests)
-
+    # redirect to login page if no user is logged in
     return redirect(url_for('login'))
 
 
+# route to add a comment to a post
 @app.route('/add_comment/<int:post_id>', methods=['POST'])
 def add_comment(post_id):
+    # check if a user is logged in
     if 'User_ID' in session:
-        User_ID = session['User_ID']
-        conn = get_db_connection()
+        User_ID = session['User_ID']  # get user id from session
+        conn = get_db_connection()  # connect to database
 
-        # get comment ID 
+        # calculate new comment id
         commentid_count = conn.execute('SELECT COUNT(*) FROM Comment').fetchone()
-        commentid = commentid_count[0] + 1
+        commentid = commentid_count[0] + 1  # increment comment count for unique id
 
-        # get comment content from the form
+        # get comment content from form
         comment_content = request.form['comment_content']
 
-        # Insert comment into  database
-        conn.execute(
-            'INSERT INTO Comment (Comment_ID, Post_ID, User_ID, Content, Time_Stamp) VALUES (?, ?, ?, ?, datetime("now"))',
-            (commentid, post_id, User_ID, comment_content)
-        )
-        conn.commit()
-        conn.close()
+        # get current datetime in standardized format
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M")
 
+        # save comment to database
+        conn.execute(
+            'INSERT INTO Comment (Comment_ID, Post_ID, User_ID, Content, Time_Stamp) VALUES (?, ?, ?, ?, ?)',
+            (commentid, post_id, User_ID, comment_content, current_time)
+        )
+        conn.commit()  # commit changes to database
+        conn.close()  # close database connection
+
+        # redirect back to posts page
         return redirect(url_for('posts'))
+
+    # redirect to login page if no user is logged in
     return redirect(url_for('login'))
+
 
 
 
