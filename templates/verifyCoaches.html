@@ -3,13 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <title>Verify Coaches</title>
+    {# link to stylesheet #}
     <link rel="stylesheet" href="{{ url_for('static', filename='coachverification.css') }}">
 </head>
 
 <body>
+    {# show all unverified coaches #}
     <h3>Coaches to be Verified:</h3>
     <table style="width:100%">
         <tr>
+            {# table headers #}
             <th>ID</th>
             <th>Name</th>
             <th>Age</th>
@@ -19,6 +22,7 @@
             <th>Certificates</th>
             <th>Actions</th>
         </tr>
+        {# loop on coaches sent from backend #}
         {%for coach in coaches%}
             <tr>
                 <td>{{ coach[0] }}</td> {# ID #}
@@ -29,10 +33,12 @@
                 <td>{{ coach[3] }}</td> {# experience years #}
                 <td>{{ coach[4] }}</td> {# certificates #}
                 <td>
+                    {# button to verify the coach in this row #}
                     <form method="POST" action="/verify_coach">
                     <input type="hidden" name="verify_coach" value="{{coach[0]}}">
                     <button type="submit" class="verify">Verify</button>
                     </form>
+                    {# button to deny the coach in this row #}
                     <form method="POST" action="/deny_coach">
                     <input type="hidden" name="deny_coach" value="{{coach[0]}}">
                     <button type="submit" class="deny">Deny</button>

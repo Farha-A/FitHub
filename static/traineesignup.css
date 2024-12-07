@@ -4,28 +4,12 @@ body {
     padding: 0;
     background: linear-gradient(to bottom, cornflowerblue, deepskyblue);
     font-family: sans-serif;
-    min-height: 100vh; 
+    min-height: 100vh;
     display: flex;
-    justify-content: center;
+    flex-direction: column;
+    justify-content: stretch;
     align-items: center;
-}
-
-/*each role button styling overriding generic button styling*/
-.role {
-    text-align: center;
-    padding: 50px 20px; 
-}
-
-/*styling the header*/
-h3 {
-    display: inline-block; 
-    background-color: white;
     color: midnightblue;
-    padding: 20px 40px; 
-    border-radius: 15px; 
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-    margin-bottom: 30px; 
-    text-align: center;
 }
 
 /*general button styling*/
@@ -47,3 +31,37 @@ button {
     text-align: center;
     touch-action: manipulation;
 }
+
+/*input styling*/
+input {
+    padding: 10px 10px 10px 10px;
+    width: 75%;
+    box-sizing: border-box;
+    margin: 5px;
+}
+
+/*overriding input styling for the radio inputs*/
+.radio input {
+    padding: 0;
+    width: auto;
+    box-sizing: content-box;
+}
+
+/*styling for the interest checkboxes to split into 4 columns*/
+.checkbox-grid {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr); 
+    gap: 5px;
+    margin: 0;
+    justify-content: center;
+}
+
+/*titles of radio/checkboxes styling*/
+.title {
+    text-decoration-line: underline;
+    text-decoration-color: midnightblue;
+    text-decoration-style: solid;
+    font-size: large;
+    margin-bottom: 5px;
+}
+

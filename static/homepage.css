@@ -1,3 +1,4 @@
+/*style for entire page*/
 body {
     margin: 0;
     padding: 0;
@@ -8,8 +9,10 @@ body {
     flex-direction: column;
     justify-content: center;
     align-items: center;
+    color: midnightblue;
 }
 
+/*general button styling*/
 button {
     backface-visibility: hidden;
     background-color: indianred;
