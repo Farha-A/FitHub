@@ -2,6 +2,59 @@
 from flask import Flask, render_template, request, session, flash, redirect, url_for
 import sqlite3
 import random
+from googleapiclient.discovery import build
+from google.oauth2 import service_account
+import os
+from googleapiclient.errors import HttpError
+
+SCOPES = ['https://www.googleapis.com/auth/drive']
+SERVICE_ACCOUNT_FILE = 'service_account.json'
+MAIN_FOLDER_ID = "13g1orkw7mkWrYYTG4gTsC7jQjtZVHDZk"
+
+
+def authenticate():
+    creds = service_account.Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
+    return creds
+
+
+def get_file_url(file_id):
+    try:
+        creds = authenticate()
+        service = build('drive', 'v3', credentials=creds)
+        file = service.files().get(fileId=file_id, fields="webViewLink, webContentLink").execute()
+
+        # Extract the file ID from webContentLink and create a viewable URL
+        file_id = file_id  # or file.get('id') to ensure it's correct
+        viewable_url = f"https://drive.google.com/uc?export=view&id={file_id}"
+
+        print(f"Generated Viewable File URL: {viewable_url}")
+
+        return viewable_url
+    except HttpError as error:
+        print(f"An error occurred: {error}")
+        return None
+
+
+
+
+def set_file_public(file_id):
+    creds = authenticate()
+    service = build('drive', 'v3', credentials=creds)
+
+    # Update file permissions to make it publicly accessible
+    permissions = {
+        'type': 'anyone',
+        'role': 'reader',
+    }
+
+    try:
+        service.permissions().create(
+            fileId=file_id,
+            body=permissions
+        ).execute()
+    except HttpError as error:
+        print(f"An error occurred while setting permissions: {error}")
+
 
 # database path
 DATABASE = 'FitHub_DB.sqlite'
@@ -27,9 +80,14 @@ def home_page():
         # returns logged-in user from the database
         conn = get_db_connection()
         user = conn.execute('SELECT * FROM User WHERE User_ID = ?', (User_ID,)).fetchone()
+        pfp_id = conn.execute('SELECT Profile_picture FROM User WHERE User_ID = ?', (User_ID,)).fetchone()
         conn.close()
+        if pfp_id:
+            file_url = get_file_url(pfp_id[0])
+        else:
+            file_url = None
         # send the user to the homepage
-        return render_template("homepage.html", user=user)
+        return render_template("homepage.html", user=user, file_url=file_url)
     # if there's no user logged in, redirects them to the login page
     return redirect(url_for('login'))
 
@@ -39,6 +97,19 @@ def home_page():
 @app.route('/signUp', methods=['GET', 'POST'])
 def role_choice():
     return render_template("role.html")
+
+
+def upload(file_path, name):
+    creds = authenticate()
+    service = build('drive', 'v3', credentials=creds)
+
+    file_metadata = {
+        'name': name,
+        'parents': [MAIN_FOLDER_ID]
+    }
+
+    file = service.files().create(body=file_metadata, media_body=file_path, fields='id').execute()
+    return file.get('id')
 
 
 # login page
@@ -182,7 +253,7 @@ def coachSignUp():
         expYears = str(request.form['expYears']) + " years"
         expDesc = request.form['expDesc']
         gender = request.form['gender']
-        certificates = request.form['certificates']
+        certificates = request.files['certificates']
         password = request.form['password']
         interests_id = request.form.getlist('interests')
 
@@ -202,13 +273,22 @@ def coachSignUp():
                      'VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
                      (userid, username, email, age, gender, password, role, interests))
 
+        # Save the uploaded certificate to Google Drive
+        temp_path = f"uploads/{certificates.filename}"
+        certificates.save(temp_path)  # Save the file temporarily
+        try:
+            drive_file_id = upload(temp_path, certificates.filename)  # Upload to Google Drive
+        finally:
+            os.remove(temp_path)  # Clean up temporary file
+
         # add coach to coach table
         conn.execute('INSERT INTO Coach (Coach_ID, Verified, Description, Experience, Certificates) '
                      'VALUES (?, ?, ?, ?, ?)',
-                     (userid, verified, expDesc, expYears, certificates))
+                     (userid, verified, expDesc, expYears, drive_file_id))
 
         conn.commit()
         conn.close()
+
         # return user to login page
         return redirect(url_for('login'))
     # get all interests from database to show in form
@@ -257,158 +337,148 @@ def denyCoach():
     # return to admin page
     return redirect(url_for('unverifiedCoaches'))
 
-# route to display and create posts
+
 @app.route('/posts', methods=['GET', 'POST'])
 def posts():
-    # check if a user is logged in
     if 'User_ID' in session:
-        User_ID = session['User_ID']  # get user id from session
-        conn = get_db_connection()  # connect to database
+        User_ID = session['User_ID']
+        conn = get_db_connection()
 
-        # fetch user information from the database
+        # User info
         user = conn.execute('SELECT * FROM User WHERE User_ID = ?', (User_ID,)).fetchone()
 
-        # fetch all available interests from the database
+        # Available tags/Interests
         all_interests = conn.execute('SELECT * FROM Interest').fetchall()
 
-        # handle post submission
+        # Share post
         if request.method == 'POST':
-            post_content = request.form['content']  # get post content
-            post_media = request.form.get('media')  # get post media (to be handled)
-            selected_tags = request.form.getlist('tags')  # get selected tags as a list
+            post_content = request.form['content']
+            post_media = request.form.get('media')  # Need modifying
+            selected_tags = request.form.getlist('tags')  # Get selected tags "as list"
 
-            # calculate new post id
+            # Post_ID
             postid_count = conn.execute('SELECT COUNT(*) FROM Post').fetchone()
-            postid = postid_count[0] + 1  # increment post count for unique id
+            postid = postid_count[0] + 1
 
-            # get current datetime in standardized format
-            current_time = datetime.now().strftime("%Y-%m-%d %H:%M")
-
-            # save post to database with tags as a slash-separated string
-            tags_str = '/'.join(selected_tags)
+            # Save the post to database
+            tags_str = '/'.join(selected_tags)  # Save tags "separated by slash"
             conn.execute(
-                '''INSERT INTO Post (Post_ID, User_ID, Content, Time_Stamp, Media, Tags) 
-                   VALUES (?, ?, ?, ?, ?, ?)''',
-                (postid, user['User_ID'], post_content, current_time, post_media, tags_str)
+                '''INSERT INTO Post (Post_ID, User_ID, Content, Time_Stamp, Media, Tags)
+VALUES (?, ?, ?, datetime("now"), ?, ?)''',
+                (postid, user['User_ID'], post_content, post_media, tags_str)
             )
-            conn.commit()  # commit changes to database
+            conn.commit()
 
-        # get user interests as a list
-        user_interests = user['Interests'].split(',') if user['Interests'] else []
-        posts_by_interest = []  # initialize posts matching user interests
-
-        # fetch posts matching user interests
-        if user_interests:
-            placeholders = ', '.join(['?'] * len(user_interests))  # placeholders for query
-            posts_by_interest = conn.execute(
-                f'''SELECT Post.*, User.Name AS Username 
-                    FROM Post 
-                    JOIN User ON Post.User_ID = User.User_ID
-                    WHERE EXISTS (
-                        SELECT 1 FROM Interest 
-                        WHERE Interest.Name IN ({placeholders}) 
-                          AND Post.Tags LIKE '%' || Interest.Interest_ID || '%'
-                    )
-                    ORDER BY Post.Time_Stamp DESC''',
-                tuple(user_interests)
-            ).fetchall()
-
-        # fetch remaining posts not matching user interests
-        remaining_posts = conn.execute(
-            '''SELECT Post.*, User.Name AS Username 
-               FROM Post 
-               JOIN User ON Post.User_ID = User.User_ID
-               WHERE Post.Post_ID NOT IN (
-                   SELECT Post.Post_ID 
-                   FROM Post 
-                   JOIN Interest 
-                   ON Post.Tags LIKE '%' || Interest.Interest_ID || '%'
-                   WHERE Interest.Name IN ({}))
-               ORDER BY Post.Time_Stamp DESC'''.format(', '.join(['?'] * len(user_interests))),
+        # User interests and corresponding posts
+        user_interests = user['Interests'].split(',')  # user interests as list
+        placeholders = ', '.join(['?'] * len(user_interests))
+        interest_ids = conn.execute(
+            'SELECT Interest_ID FROM Interest WHERE Name IN (' + placeholders + ')',
             tuple(user_interests)
-        ).fetchall() if user_interests else conn.execute(
-            '''SELECT Post.*, User.Name AS Username 
-               FROM Post 
-               JOIN User ON Post.User_ID = User.User_ID
-               ORDER BY Post.Time_Stamp DESC'''
         ).fetchall()
 
-        # combine and sort all posts by timestamp
-        all_posts = sorted(posts_by_interest + remaining_posts, key=lambda x: x['Time_Stamp'], reverse=True)
+        # List of Interest_IDs
+        interest_ids = [str(row['Interest_ID']) for row in interest_ids]
+        placeholders_for_interest_ids = ', '.join(['?'] * len(interest_ids))
 
-        # fetch all comments with usernames
-        comments_with_usernames = conn.execute('''
-            SELECT Comment.*, User.Name AS Username 
-            FROM Comment 
+        posts_by_interest = conn.execute(
+            f'''SELECT *
+FROM Post
+WHERE EXISTS (SELECT 1
+              FROM Interest
+              WHERE Interest.Interest_ID IN ({placeholders_for_interest_ids})
+                AND Post.Tags LIKE '%' || Interest.Interest_ID || '%')
+ORDER BY Time_Stamp DESC''',
+            tuple(interest_ids)
+        ).fetchall()
+
+        remaining_posts = conn.execute(
+            f'''SELECT * FROM Post WHERE Post_ID NOT IN (
+                SELECT Post_ID FROM Post
+                WHERE EXISTS (
+                    SELECT 1 FROM Interest
+                    WHERE Interest.Interest_ID IN ({placeholders_for_interest_ids})
+                      AND Post.Tags LIKE '%' || Interest.Interest_ID || '%'))
+                ORDER BY Time_Stamp DESC''',
+            tuple(interest_ids)
+        ).fetchall()
+
+        all_posts = posts_by_interest + remaining_posts
+        all_posts = sorted(all_posts, key=lambda x: x['Time_Stamp'], reverse=True)
+
+        # get posts with usernames
+        posts_with_usernames = conn.execute('''
+            SELECT Post.*, User.Name
+            FROM Post
+            JOIN User ON Post.User_ID = User.User_ID
+        ''').fetchall()
+
+        # Fetch comments with usernames
+        comments_with_usernames = conn.execute(''' fixe
+            SELECT Comment.*, User.Name
+            FROM Comment
             JOIN User ON Comment.User_ID = User.User_ID
         ''').fetchall()
 
-        # combine posts with their respective comments
         posts_with_comments = []
-        for post in all_posts:
-            post_comments = [
-                {'Username': comment['Username'], 'Content': comment['Content']}
-                for comment in comments_with_usernames
-                if comment['Post_ID'] == post['Post_ID']
-            ]
-            posts_with_comments.append({
+        for post in posts_with_usernames:
+            post_data = {
                 'post': {
                     'Post_ID': post['Post_ID'],
                     'Content': post['Content'],
                     'Media': post['Media'],
-                    'Username': post['Username'],
-                    'User_ID': post['User_ID'],
-                    'Time_Stamp': post['Time_Stamp']
-                },
-                'comments': post_comments
-            })
+                    'Username': post['Name'],
+                    'User_ID': post['User_ID']
+                }
+            }
 
-        conn.close()  # close database connection
-        # render posts page with user, posts, and interests
-        return render_template("posts.html", user=user, posts_with_comments=posts_with_comments, interests=all_interests)
+            # get comments for the current post
+            post_comments = []
+            for comment in comments_with_usernames:
+                if comment['Post_ID'] == post['Post_ID']:
+                    post_comments.append({
+                        'Username': comment['Name'],
+                        'Content': comment['Content']
+                    })
 
-    # redirect to login page if no user is logged in
+            post_data['comments'] = post_comments
+            posts_with_comments.append(post_data)
+
+        conn.close()
+
+        return render_template("posts.html", user=user, posts_with_comments=posts_with_comments,
+                               interests=all_interests)
+
     return redirect(url_for('login'))
 
 
-# route to add a comment to a post
 @app.route('/add_comment/<int:post_id>', methods=['POST'])
 def add_comment(post_id):
-    # check if a user is logged in
     if 'User_ID' in session:
-        User_ID = session['User_ID']  # get user id from session
-        conn = get_db_connection()  # connect to database
+        User_ID = session['User_ID']
+        conn = get_db_connection()
 
-        # calculate new comment id
+        # get comment ID
         commentid_count = conn.execute('SELECT COUNT(*) FROM Comment').fetchone()
-        commentid = commentid_count[0] + 1  # increment comment count for unique id
+        commentid = commentid_count[0] + 1
 
-        # get comment content from form
+        # get comment content from the form
         comment_content = request.form['comment_content']
 
-        # get current datetime in standardized format
-        current_time = datetime.now().strftime("%Y-%m-%d %H:%M")
-
-        # save comment to database
+        # Insert comment into  database
         conn.execute(
-            'INSERT INTO Comment (Comment_ID, Post_ID, User_ID, Content, Time_Stamp) VALUES (?, ?, ?, ?, ?)',
-            (commentid, post_id, User_ID, comment_content, current_time)
+            'INSERT INTO Comment (Comment_ID, Post_ID, User_ID, Content, Time_Stamp) '
+            'VALUES (?, ?, ?, ?, datetime("now"))',
+            (commentid, post_id, User_ID, comment_content)
         )
-        conn.commit()  # commit changes to database
-        conn.close()  # close database connection
+        conn.commit()
+        conn.close()
 
-        # redirect back to posts page
         return redirect(url_for('posts'))
-
-    # redirect to login page if no user is logged in
     return redirect(url_for('login'))
 
 
-
-
-
-
-#Coach can add new recipes
+# Coach can add new recipes
 @app.route('/add_recipe', methods=['GET', 'POST'])
 def add_recipe():
     if 'User_ID' not in session:
@@ -440,7 +510,8 @@ def add_recipe():
 
             # Insert the new recipe
             cursor.execute("""
-                INSERT INTO Recipe (Recipe_ID, Coach_ID, Recipe_Name, Meal_Type, Nutrition_Information, Media, Steps, Ingredients)
+                INSERT INTO Recipe (Recipe_ID, Coach_ID, Recipe_Name, Meal_Type,
+                Nutrition_Information, Media, Steps, Ingredients)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """, (new_recipe_id, User_ID, recipe_name, meal_type, nutrition_info, media, steps, ingredients))
 
@@ -457,7 +528,7 @@ def add_recipe():
     return render_template('add_recipe.html')
 
 
-#Show all recipes to user
+# Show all recipes to user
 @app.route('/recipes', methods=['GET'])
 def GetRecipes():
     conn = get_db_connection()
@@ -478,7 +549,7 @@ def GetRecipes():
     return render_template('recipes.html', recipes=recipes_data)
 
 
-#Show recipes details when the user click on more details 
+# Show recipes details when the user click on more details
 @app.route('/recipes/<recipe_id>', methods=['GET'])
 def GetRecipeDetails(recipe_id):
     conn = get_db_connection()
@@ -503,7 +574,7 @@ def GetRecipeDetails(recipe_id):
     return render_template('recipes_detailed.html', recipe=recipe_data)
 
 
-#Show coach details for trainee so that he can add the suitable coach for him
+# Show coach details for trainee so that he can add the suitable coach for him
 @app.route('/coaches', methods=['GET'])
 def GetCoach():
     conn = get_db_connection()
@@ -521,7 +592,7 @@ def GetCoach():
     return render_template('coaches_details.html', coaches=coaches_data)
 
 
-#show exercises for users
+# show exercises for users
 @app.route('/exercises', methods=['GET'])
 def GetExercises():
     try:
@@ -539,7 +610,7 @@ def GetExercises():
         return "Error fetching exercises", 500
 
 
-#Show more details for user about the clicked exercises
+# Show more details for user about the clicked exercises
 @app.route('/exercise/<int:exercise_id>', methods=['GET'])
 def GetExerciseDetails(exercise_id):
     print(f"Received exercise_id: {exercise_id}")
@@ -570,7 +641,7 @@ def GetExerciseDetails(exercise_id):
         return "Exercise not found", 404
 
 
-#Coach can add new exercises
+# Coach can add new exercises
 @app.route('/add_exercises', methods=['GET', 'POST'])
 def AddExercises():
     if 'User_ID' not in session:
@@ -602,7 +673,8 @@ def AddExercises():
                     break
 
             cursor.execute("""
-                INSERT INTO Exercise (Exercise_ID, Coach_ID, Name, Media, Duration, Equipment, Description, Muscles_Targeted)
+                INSERT INTO Exercise (Exercise_ID, Coach_ID, Name, Media,
+                Duration, Equipment, Description, Muscles_Targeted)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """, (random_exercise_id, User_ID, name, media, duration, equipment, description, muscles_targeted))
 
