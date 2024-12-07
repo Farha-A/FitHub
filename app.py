@@ -2,6 +2,7 @@
 from flask import Flask, render_template, request, session, flash, redirect, url_for
 import sqlite3
 import random
+from datetime import datetime
 
 # database path
 DATABASE = 'FitHub_DB.sqlite'
