@@ -2,6 +2,7 @@
 from flask import Flask, render_template, request, session, flash, redirect, url_for
 import sqlite3
 import random
+from datetime import datetime
 
 # database path
 DATABASE = 'FitHub_DB.sqlite'
@@ -84,10 +85,11 @@ def redirectPerRole():
         conn.close()
         # if a coach is verified direct to homepage
         if verification == "TRUE":
-            return redirect(url_for('home_page'))
+            return redirect(url_for('posts'))
+        session.pop('User_ID', None)
         # if not flash a message to inform them they can't access the site yet
-        return "Please wait to be verified :)"
-    return redirect(url_for('home_page'))
+        return render_template("await_verification.html")
+    return redirect(url_for('posts'))
 
 
 # log out users
@@ -257,6 +259,7 @@ def denyCoach():
     # return to admin page
     return redirect(url_for('unverifiedCoaches'))
 
+
 # route to display and create posts
 @app.route('/posts', methods=['GET', 'POST'])
 def posts():
@@ -287,7 +290,7 @@ def posts():
             # save post to database with tags as a slash-separated string
             tags_str = '/'.join(selected_tags)
             conn.execute(
-                '''INSERT INTO Post (Post_ID, User_ID, Content, Time_Stamp, Media, Tags) 
+                '''INSERT INTO Post (Post_ID, User_ID, Content, Time_Stamp, Media, Tags)
                    VALUES (?, ?, ?, ?, ?, ?)''',
                 (postid, user['User_ID'], post_content, current_time, post_media, tags_str)
             )
@@ -301,12 +304,12 @@ def posts():
         if user_interests:
             placeholders = ', '.join(['?'] * len(user_interests))  # placeholders for query
             posts_by_interest = conn.execute(
-                f'''SELECT Post.*, User.Name AS Username 
-                    FROM Post 
+                f'''SELECT Post.*, User.Name AS Username
+                    FROM Post
                     JOIN User ON Post.User_ID = User.User_ID
                     WHERE EXISTS (
-                        SELECT 1 FROM Interest 
-                        WHERE Interest.Name IN ({placeholders}) 
+                        SELECT 1 FROM Interest
+                        WHERE Interest.Name IN ({placeholders})
                           AND Post.Tags LIKE '%' || Interest.Interest_ID || '%'
                     )
                     ORDER BY Post.Time_Stamp DESC''',
@@ -315,20 +318,20 @@ def posts():
 
         # fetch remaining posts not matching user interests
         remaining_posts = conn.execute(
-            '''SELECT Post.*, User.Name AS Username 
-               FROM Post 
+            '''SELECT Post.*, User.Name AS Username
+               FROM Post
                JOIN User ON Post.User_ID = User.User_ID
                WHERE Post.Post_ID NOT IN (
-                   SELECT Post.Post_ID 
-                   FROM Post 
-                   JOIN Interest 
+                   SELECT Post.Post_ID
+                   FROM Post
+                   JOIN Interest
                    ON Post.Tags LIKE '%' || Interest.Interest_ID || '%'
                    WHERE Interest.Name IN ({}))
                ORDER BY Post.Time_Stamp DESC'''.format(', '.join(['?'] * len(user_interests))),
             tuple(user_interests)
         ).fetchall() if user_interests else conn.execute(
-            '''SELECT Post.*, User.Name AS Username 
-               FROM Post 
+            '''SELECT Post.*, User.Name AS Username
+               FROM Post
                JOIN User ON Post.User_ID = User.User_ID
                ORDER BY Post.Time_Stamp DESC'''
         ).fetchall()
@@ -338,8 +341,8 @@ def posts():
 
         # fetch all comments with usernames
         comments_with_usernames = conn.execute('''
-            SELECT Comment.*, User.Name AS Username 
-            FROM Comment 
+            SELECT Comment.*, User.Name AS Username
+            FROM Comment
             JOIN User ON Comment.User_ID = User.User_ID
         ''').fetchall()
 
@@ -365,7 +368,8 @@ def posts():
 
         conn.close()  # close database connection
         # render posts page with user, posts, and interests
-        return render_template("posts.html", user=user, posts_with_comments=posts_with_comments, interests=all_interests)
+        return render_template("posts.html", user=user, posts_with_comments=posts_with_comments,
+                               interests=all_interests)
 
     # redirect to login page if no user is logged in
     return redirect(url_for('login'))
@@ -404,11 +408,7 @@ def add_comment(post_id):
     return redirect(url_for('login'))
 
 
-
-
-
-
-#Coach can add new recipes
+# Coach can add new recipes
 @app.route('/add_recipe', methods=['GET', 'POST'])
 def add_recipe():
     if 'User_ID' not in session:
@@ -440,7 +440,8 @@ def add_recipe():
 
             # Insert the new recipe
             cursor.execute("""
-                INSERT INTO Recipe (Recipe_ID, Coach_ID, Recipe_Name, Meal_Type, Nutrition_Information, Media, Steps, Ingredients)
+                INSERT INTO Recipe (Recipe_ID, Coach_ID, Recipe_Name, Meal_Type,
+                Nutrition_Information, Media, Steps, Ingredients)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """, (new_recipe_id, User_ID, recipe_name, meal_type, nutrition_info, media, steps, ingredients))
 
@@ -457,7 +458,7 @@ def add_recipe():
     return render_template('add_recipe.html')
 
 
-#Show all recipes to user
+# Show all recipes to user
 @app.route('/recipes', methods=['GET'])
 def GetRecipes():
     conn = get_db_connection()
@@ -478,7 +479,7 @@ def GetRecipes():
     return render_template('recipes.html', recipes=recipes_data)
 
 
-#Show recipes details when the user click on more details 
+# Show recipes details when the user click on more details
 @app.route('/recipes/<recipe_id>', methods=['GET'])
 def GetRecipeDetails(recipe_id):
     conn = get_db_connection()
@@ -503,7 +504,7 @@ def GetRecipeDetails(recipe_id):
     return render_template('recipes_detailed.html', recipe=recipe_data)
 
 
-#Show coach details for trainee so that he can add the suitable coach for him
+# Show coach details for trainee so that he can add the suitable coach for him
 @app.route('/coaches', methods=['GET'])
 def GetCoach():
     conn = get_db_connection()
@@ -521,7 +522,7 @@ def GetCoach():
     return render_template('coaches_details.html', coaches=coaches_data)
 
 
-#show exercises for users
+# show exercises for users
 @app.route('/exercises', methods=['GET'])
 def GetExercises():
     try:
@@ -539,7 +540,7 @@ def GetExercises():
         return "Error fetching exercises", 500
 
 
-#Show more details for user about the clicked exercises
+# Show more details for user about the clicked exercises
 @app.route('/exercise/<int:exercise_id>', methods=['GET'])
 def GetExerciseDetails(exercise_id):
     print(f"Received exercise_id: {exercise_id}")
@@ -570,7 +571,7 @@ def GetExerciseDetails(exercise_id):
         return "Exercise not found", 404
 
 
-#Coach can add new exercises
+# Coach can add new exercises
 @app.route('/add_exercises', methods=['GET', 'POST'])
 def AddExercises():
     if 'User_ID' not in session:
@@ -602,7 +603,8 @@ def AddExercises():
                     break
 
             cursor.execute("""
-                INSERT INTO Exercise (Exercise_ID, Coach_ID, Name, Media, Duration, Equipment, Description, Muscles_Targeted)
+                INSERT INTO Exercise (Exercise_ID, Coach_ID, Name, Media,
+                Duration, Equipment, Description, Muscles_Targeted)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """, (random_exercise_id, User_ID, name, media, duration, equipment, description, muscles_targeted))
 
