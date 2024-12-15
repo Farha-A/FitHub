@@ -3,6 +3,7 @@ from flask import Flask, render_template, request, session, flash, redirect, url
 import sqlite3
 import random
 from datetime import datetime
+from flask_mail import Mail, Message
 
 # database path
 DATABASE = 'FitHub_DB.sqlite'
@@ -238,9 +239,20 @@ def verifyCoach():
     coachID = request.form['verify_coach']
     conn = get_db_connection()
     # updates coach status to verified
+    coach_mail = conn.execute('SELECT Email From User WHERE User_ID=?', (coachID,)).fetchone()[0]
     conn.execute('UPDATE Coach SET Verified = "TRUE" WHERE Coach_ID=?', (coachID,))
     conn.commit()
     conn.close()
+    app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+    app.config['MAIL_PORT'] = 465
+    app.config['MAIL_USERNAME'] = 's-farha.shady@zewailcity.edu.eg'
+    app.config['MAIL_PASSWORD'] = '7ThuKc?C'
+    app.config['MAIL_USE_TLS'] = False
+    app.config['MAIL_USE_SSL'] = True
+    mail = Mail(app)
+    msg = Message('FitHub Verification', sender='s-farha.shady@zewailcity.edu.eg', recipients=[coach_mail])
+    msg.body = "Congratulation! You got verified, you can now access our site as a coach :D"
+    mail.send(msg)
     # return to admin page
     return redirect(url_for('unverifiedCoaches'))
 
