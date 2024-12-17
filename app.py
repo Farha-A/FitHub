@@ -245,12 +245,12 @@ def verifyCoach():
     conn.close()
     app.config['MAIL_SERVER'] = 'smtp.gmail.com'
     app.config['MAIL_PORT'] = 465
-    app.config['MAIL_USERNAME'] = 's-farha.shady@zewailcity.edu.eg'
-    app.config['MAIL_PASSWORD'] = '7ThuKc?C'
+    app.config['MAIL_USERNAME'] = '*******'
+    app.config['MAIL_PASSWORD'] = '******'
     app.config['MAIL_USE_TLS'] = False
     app.config['MAIL_USE_SSL'] = True
     mail = Mail(app)
-    msg = Message('FitHub Verification', sender='s-farha.shady@zewailcity.edu.eg', recipients=[coach_mail])
+    msg = Message('FitHub Verification', sender='******', recipients=[coach_mail])
     msg.body = "Congratulation! You got verified, you can now access our site as a coach :D"
     mail.send(msg)
     # return to admin page
