@@ -4,6 +4,7 @@ import sqlite3
 import random
 from datetime import datetime
 from flask_mail import Mail, Message
+import numpy as np
 
 # database path
 DATABASE = 'FitHub_DB.sqlite'
@@ -31,7 +32,7 @@ def home_page():
         user = conn.execute('SELECT * FROM User WHERE User_ID = ?', (User_ID,)).fetchone()
         conn.close()
         # send the user to the homepage
-        return render_template("homepage.html", user=user)
+        return redirect("posts")
     # if there's no user logged in, redirects them to the login page
     return redirect(url_for('login'))
 
@@ -67,6 +68,60 @@ def login():
     return render_template("login.html")
 
 
+@app.route('/forgotPW', methods=['GET', 'POST'])
+def forgotPW():
+    if 'fp_email' not in session:
+        session['fp_email'] = None
+    if 'security_question' not in session:
+        session["security_question"] = None
+    if "show_pw_change" not in session:
+        session["show_pw_change"] = False
+    show_sq = False
+
+    if request.method == 'POST':
+        if (session['fp_email'] and session['security_question'] and session["show_pw_change"] is True
+                and 'new_pw' in request.form):
+            new_pw = request.form['new_pw']
+            conn = get_db_connection()
+            userid = conn.execute('SELECT User_ID FROM User WHERE Email = ?', (session["fp_email"],)).fetchone()
+            conn.execute('UPDATE User SET Password = ? WHERE User_ID = ?', (new_pw, userid[0]))
+            conn.commit()
+            conn.close()
+            session.pop('fp_email', None)
+            session.pop('security_question', None)
+            session.pop('show_pw_change', None)
+            return redirect(url_for("login"))
+
+        elif session['fp_email']:
+            if 'answer' in request.form:
+                answer = request.form['answer'].lower()
+                if session["security_question"] and answer == session["security_question"][1].lower():
+                    session["show_pw_change"] = True
+                else:
+                    flash("Incorrect security answer. Try again.", "error")
+        elif 'email' in request.form and request.form['email']:
+            email = request.form['email']
+            session['fp_email'] = email
+            conn = get_db_connection()
+            user_sq = conn.execute('SELECT Security_Question FROM User WHERE Email = ?', (email,)).fetchone()
+            conn.close()
+
+            if user_sq:
+                session["security_question"] = user_sq[0].split(",")
+                show_sq = True
+            else:
+                flash("Invalid email. Try again.", "error")
+                session['fp_email'] = None
+                session['security_question'] = None
+
+    if session['fp_email'] and session["security_question"]:
+        show_sq = True
+    return render_template(
+        "forgotPW.html", show_sq=show_sq,
+        security_question=session["security_question"][0] if session["security_question"]
+        else "", show_pw_change=session["show_pw_change"])
+
+
 # user redirection per user role
 @app.route('/redirect', methods=['GET', 'POST'])
 def redirectPerRole():
@@ -88,7 +143,6 @@ def redirectPerRole():
         if verification == "TRUE":
             return redirect(url_for('posts'))
         session.pop('User_ID', None)
-        # if not flash a message to inform them they can't access the site yet
         return render_template("await_verification.html")
     return redirect(url_for('posts'))
 
@@ -108,6 +162,9 @@ def logout():
 @app.route('/trainee', methods=["GET", "POST"])
 def traineeSignUp():
     email_exists = False
+    questions = ["What was your dream job as a child?", "What was the name of your first stuffed animal?",
+                 "What was the color of your favorite childhood blanket?"]
+    security_question = questions[np.random.randint(0, len(questions))]
     # save the trainee's information based on their input
     if request.method == 'POST':
         role = "Trainee"
@@ -121,6 +178,7 @@ def traineeSignUp():
         password = request.form['password']
         bmi = round(int(weight) / (float(height) ** 2), 2)
         interests_id = request.form.getlist('interests')
+        security_answer = request.form['sec_ans']
 
         conn = get_db_connection()
         # save interests entered by their names
@@ -136,10 +194,12 @@ def traineeSignUp():
         # check if email already used for another user
         email_check = conn.execute('SELECT * FROM User WHERE Email = ?', (email,)).fetchone()
         if not email_check:
+            sec_qa = security_question + "," + security_answer
             # add trainee to user table
-            conn.execute('INSERT INTO User (User_ID, Name, Email, Age, Gender, Password, Role, Interests) '
-                         'VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-                         (userid, username, email, age, gender, password, role, interests))
+            conn.execute('INSERT INTO User (User_ID, Name, Email, Age, Gender, Password, '
+                         'Role, Interests, Security_Question) '
+                         'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                         (userid, username, email, age, gender, password, role, interests, sec_qa))
 
             # add trainee to trainee table
             conn.execute('INSERT INTO Trainee (Trainee_ID, Weight_kg, Height_m, BMI, Exercise_Level) '
@@ -169,12 +229,17 @@ def traineeSignUp():
     conn = get_db_connection()
     all_interests = conn.execute('SELECT * FROM Interest').fetchall()
     conn.close()
-    return render_template("traineeSignUp.html", interests=all_interests, email_exists=email_exists)
+    return render_template("traineeSignUp.html", interests=all_interests, email_exists=email_exists,
+                           security_question=security_question)
 
 
 # coach sign-up
 @app.route('/coach', methods=["GET", "POST"])
 def coachSignUp():
+    email_exists = False
+    questions = ["What was your dream job as a child?", "What was the name of your first stuffed animal?",
+                 "What was the color of your favorite childhood blanket?"]
+    security_question = questions[np.random.randint(0, len(questions))]
     # save the coach's information based on their input
     if request.method == 'POST':
         role = "Coach"
@@ -188,6 +253,7 @@ def coachSignUp():
         certificates = request.form['certificates']
         password = request.form['password']
         interests_id = request.form.getlist('interests')
+        security_answer = request.form['sec_ans']
 
         conn = get_db_connection()
         # save interests entered by their names
@@ -201,9 +267,12 @@ def coachSignUp():
         userid = str(userid_count[0] + 1)
 
         # add coach to user table
-        conn.execute('INSERT INTO User (User_ID, Name, Email, Age, Gender, Password, Role, Interests) '
-                     'VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-                     (userid, username, email, age, gender, password, role, interests))
+        sec_qa = security_question + "," + security_answer
+        # add trainee to user table
+        conn.execute('INSERT INTO User (User_ID, Name, Email, Age, Gender, Password, '
+                     'Role, Interests, Security_Question) '
+                     'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                     (userid, username, email, age, gender, password, role, interests, sec_qa))
 
         # add coach to coach table
         conn.execute('INSERT INTO Coach (Coach_ID, Verified, Description, Experience, Certificates) '
@@ -218,7 +287,8 @@ def coachSignUp():
     conn = get_db_connection()
     all_interests = conn.execute('SELECT * FROM Interest').fetchall()
     conn.close()
-    return render_template("coachSignUp.html", interests=all_interests)
+    return render_template("traineeSignUp.html", interests=all_interests, email_exists=email_exists,
+                           security_question=security_question)
 
 
 # admin page
