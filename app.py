@@ -1,10 +1,13 @@
 # importing necessary libraries
-from flask import Flask, render_template, request, session, flash, redirect, url_for
+from flask import Flask, render_template, request, session, flash, redirect, url_for, send_file
+import io
+from io import BytesIO
 import sqlite3
 import random
 from datetime import datetime
 from flask_mail import Mail, Message
 import numpy as np
+import base64
 
 # database path
 DATABASE = 'FitHub_DB.sqlite'
@@ -21,6 +24,31 @@ def get_db_connection():
     return conn
 
 
+def photo_to_binary(img):
+    with open(img, 'rb') as f:
+        image_data = base64.b64encode(f.read()).decode('utf-8')
+    return image_data
+
+
+def serve_image(table, table_id):
+    conn = get_db_connection()
+    query = f'SELECT Profile_picture FROM {table} WHERE User_ID = ?'
+    image_data = conn.execute(query, (table_id,)).fetchone()
+    conn.close()
+
+    # return default profile photo if user hasn't uploaded a profile picture
+    if table == "User":
+        if not image_data or not image_data[0]:
+            return 'static/default_profile.jpg'
+    # change string into base64 to be read properly
+    if isinstance(image_data[0], str):
+        image_data = base64.b64decode(image_data[0])
+        base64_image = base64.b64encode(image_data).decode('utf-8')
+        return f"data:image/jpeg;base64,{base64_image}"
+    # send image
+    return send_file(BytesIO(image_data), mimetype='image/jpg', as_attachment=False)
+
+
 # load homepage
 @app.route('/', methods=['GET', 'POST'])
 def home_page():
@@ -31,8 +59,9 @@ def home_page():
         conn = get_db_connection()
         user = conn.execute('SELECT * FROM User WHERE User_ID = ?', (User_ID,)).fetchone()
         conn.close()
+        img = serve_image("User", user[0])
         # send the user to the homepage
-        return redirect("posts")
+        return render_template("homepage.html", user=user, img=img)
     # if there's no user logged in, redirects them to the login page
     return redirect(url_for('login'))
 
@@ -250,10 +279,16 @@ def coachSignUp():
         expYears = str(request.form['expYears']) + " years"
         expDesc = request.form['expDesc']
         gender = request.form['gender']
-        certificates = request.form['certificates']
+        certificates = request.files['certificates']
         password = request.form['password']
         interests_id = request.form.getlist('interests')
         security_answer = request.form['sec_ans']
+
+        certificates_data = []
+        for certificate in certificates:
+            with open(certificate, 'rb') as file:
+                certificate_data = file.read()
+                certificates_data.append(certificate_data)
 
         conn = get_db_connection()
         # save interests entered by their names
@@ -266,23 +301,26 @@ def coachSignUp():
         userid_count = conn.execute('SELECT COUNT(*) FROM User').fetchone()
         userid = str(userid_count[0] + 1)
 
-        # add coach to user table
-        sec_qa = security_question + "," + security_answer
-        # add trainee to user table
-        conn.execute('INSERT INTO User (User_ID, Name, Email, Age, Gender, Password, '
-                     'Role, Interests, Security_Question) '
-                     'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                     (userid, username, email, age, gender, password, role, interests, sec_qa))
+        # check if email already used for another user
+        email_check = conn.execute('SELECT * FROM User WHERE Email = ?', (email,)).fetchone()
+        if not email_check:
+            sec_qa = security_question + "," + security_answer
+            # add coach to user table
+            conn.execute('INSERT INTO User (User_ID, Name, Email, Age, Gender, Password, '
+                         'Role, Interests, Security_Question) '
+                         'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                         (userid, username, email, age, gender, password, role, interests, sec_qa))
 
-        # add coach to coach table
-        conn.execute('INSERT INTO Coach (Coach_ID, Verified, Description, Experience, Certificates) '
-                     'VALUES (?, ?, ?, ?, ?)',
-                     (userid, verified, expDesc, expYears, certificates))
+            # add coach to coach table
+            conn.execute('INSERT INTO Coach (Coach_ID, Verified, Description, Experience, Certificates) '
+                         'VALUES (?, ?, ?, ?, ?)',
+                         (userid, verified, expDesc, expYears, certificates_data))
 
-        conn.commit()
-        conn.close()
-        # return user to login page
-        return redirect(url_for('login'))
+            conn.commit()
+            conn.close()
+            # return user to login page
+            return redirect(url_for('login'))
+        email_exists = True
     # get all interests from database to show in form
     conn = get_db_connection()
     all_interests = conn.execute('SELECT * FROM Interest').fetchall()
@@ -315,12 +353,12 @@ def verifyCoach():
     conn.close()
     app.config['MAIL_SERVER'] = 'smtp.gmail.com'
     app.config['MAIL_PORT'] = 465
-    app.config['MAIL_USERNAME'] = '*******'
-    app.config['MAIL_PASSWORD'] = '******'
+    app.config['MAIL_USERNAME'] = 's-farha.shady@zewailcity.edu.eg'
+    app.config['MAIL_PASSWORD'] = '7ThuKc?C'
     app.config['MAIL_USE_TLS'] = False
     app.config['MAIL_USE_SSL'] = True
     mail = Mail(app)
-    msg = Message('FitHub Verification', sender='******', recipients=[coach_mail])
+    msg = Message('FitHub Verification', sender='s-farha.shady@zewailcity.edu.eg', recipients=[coach_mail])
     msg.body = "Congratulation! You got verified, you can now access our site as a coach :D"
     mail.send(msg)
     # return to admin page
