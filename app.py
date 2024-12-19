@@ -409,6 +409,225 @@ def add_comment(post_id):
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+@app.route('/chats')
+def view_chats():
+    if 'User_ID' not in session:
+        return redirect(url_for('login'))  # Redirect if not logged in
+
+    current_user_id = session.get('User_ID')  # Get the logged-in user's ID
+    conn = get_db_connection()
+
+    # Query to fetch chats with the other user's details
+    chats = conn.execute('''
+        SELECT Chat.Chat_ID, 
+               CASE 
+                   WHEN User1_ID = ? THEN User2_ID
+                   ELSE User1_ID
+               END AS Other_User_ID,
+               (SELECT Name FROM User WHERE User.User_ID = 
+                   CASE 
+                       WHEN User1_ID = ? THEN User2_ID
+                       ELSE User1_ID
+                   END) AS Other_User_Name
+        FROM Chat
+        WHERE User1_ID = ? OR User2_ID = ?
+    ''', (current_user_id, current_user_id, current_user_id, current_user_id)).fetchall()
+
+    # Debugging: Print the chats fetched from the database
+    print("Chats fetched:", [dict(chat) for chat in chats])
+
+    conn.close()
+    return render_template('chat.html', chats=chats, selected_chat=None, messages=None, current_user_id=current_user_id)
+
+
+
+@app.route('/chat/<int:chat_id>', methods=['GET', 'POST'])
+def view_chat(chat_id):
+    if 'User_ID' not in session:
+        return redirect(url_for('login'))  # Redirect if not logged in
+
+    # Validate chat_id
+    if not chat_id:
+        flash("Invalid chat selected.", "danger")
+        return redirect(url_for('view_chats'))
+
+    current_user_id = session.get('User_ID')  # Get the logged-in user's ID
+    conn = get_db_connection()
+
+    # Fetch the selected chat's messages
+    messages = conn.execute('''
+        SELECT Message.Message_ID, Message.Chat_ID, Message.Sender_ID, 
+               Message.Content, Message.Time_Stamp, User.Name AS Sender_Name
+        FROM Message
+        JOIN User ON Message.Sender_ID = User.User_ID
+        WHERE Chat_ID = ?
+        ORDER BY Time_Stamp ASC
+    ''', (chat_id,)).fetchall()
+
+    # Fetch other user's name for the chat
+    selected_chat = conn.execute('''
+        SELECT Chat.Chat_ID, 
+               CASE 
+                   WHEN User1_ID = ? THEN User2_ID
+                   ELSE User1_ID
+               END AS Other_User_ID,
+               (SELECT Name FROM User WHERE User.User_ID = 
+                   CASE 
+                       WHEN User1_ID = ? THEN User2_ID
+                       ELSE User1_ID
+                   END) AS Other_User_Name
+        FROM Chat
+        WHERE Chat_ID = ?
+    ''', (current_user_id, current_user_id, chat_id)).fetchone()
+
+    # Debugging: Print selected chat and messages
+    print("Selected Chat:", dict(selected_chat) if selected_chat else "None")
+    print("Messages fetched:", [dict(message) for message in messages])
+
+    conn.close()
+
+    if not selected_chat:
+        flash("Chat not found.", "danger")
+        return redirect(url_for('view_chats'))
+
+    return render_template('chat.html', 
+                           chats=None, 
+                           selected_chat=selected_chat, 
+                           messages=messages, 
+                           current_user_id=current_user_id)
+
+
+
+
+# Route to send a message in a specific chat
+@app.route('/chat/<int:chat_id>/send', methods=['POST'])
+def send_message(chat_id):
+    if 'User_ID' not in session:
+        return redirect(url_for('login'))  # Ensure user is logged in
+
+    current_user_id = session.get('User_ID')
+    message_content = request.form['message_content']
+
+    conn = get_db_connection()
+    conn.execute('''
+        INSERT INTO Message (Chat_ID, Sender_ID, Content, Time_Stamp)
+        VALUES (?, ?, ?, datetime('now'))
+    ''', (chat_id, current_user_id, message_content))
+    conn.commit()
+    conn.close()
+
+    return redirect(url_for('view_chat', chat_id=chat_id))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 #Coach can add new recipes
 @app.route('/add_recipe', methods=['GET', 'POST'])
 def add_recipe():

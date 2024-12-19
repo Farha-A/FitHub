@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Application</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <div class="chat-container">
+        <!-- Sidebar for chat list -->
+        <div class="chat-sidebar">
+            <h2>Your Chats</h2>
+            <div class="chat-list">
+                {% if chats %}
+                    {% for chat in chats %}
+                        <a href="#" class="chat-link" data-chat-id="{{ chat.Chat_ID }}">
+                            <div class="chat-item">
+                                <h4>{{ chat.Other_User_Name }}</h4>
+                            </div>
+                        </a>
+                    {% endfor %}
+                {% else %}
+                    <p>No chats found.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Main chat window -->
+        <div class="chat-main">
+            {% if selected_chat %}
+                <div class="chat-header">
+                    <h3>Chat with {{ selected_chat.Other_User_Name }}</h3>
+                </div>
+                <div class="chat-messages">
+                    {% if messages %}
+                        {% for message in messages %}
+                            <div class="message {% if message.Sender_ID == current_user_id %}outgoing{% else %}incoming{% endif %}">
+                                <p><strong>{{ message.Sender_Name }}:</strong> {{ message.Content }}</p>
+                                <span class="timestamp">{{ message.Time_Stamp }}</span>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <p>No messages yet. Start the conversation!</p>
+                    {% endif %}
+                </div>
+                <div class="chat-input">
+                    <form action="/chat/{{ selected_chat.Chat_ID }}" method="POST">
+                        <input type="text" name="message" placeholder="Type your message..." required>
+                        <button type="submit">Send</button>
+                    </form>
+                </div>
+            {% else %}
+                <div class="no-chat-selected">
+                    <h3>Select a chat to start messaging</h3>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <script>
+        // JavaScript to handle chat selection
+        $(document).ready(function () {
+            $('.chat-link').on('click', function (event) {
+                event.preventDefault();
+                var chatId = $(this).data('chat-id');
+                console.log("Selected Chat ID:", chatId);
+                if (chatId) {
+                    window.location.href = "/chat/" + chatId;
+                } else {
+                    alert("Invalid chat selection. Please try again.");
+                }
+            });
+        });
+    </script>
+</body>
+</html>
