@@ -4,16 +4,14 @@
 <head>
     <meta charset="utf-8">
     <title>Fithub - Exercises</title>
-    <meta content="width=device-width, initial-scale=1.0" name="viewport">
-    <meta content="" name="keywords">
-    <meta content="" name="description">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="keywords" content="fitness, exercise, health">
+    <meta name="description" content="Explore a variety of exercises for your fitness journey on Fithub">
 
     <!-- Favicon -->
     <link href="{{ url_for('static', filename='img/favicon.ico') }}" rel="icon">
 
     <!-- Google Web Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500&family=Lora:wght@600;700&display=swap" rel="stylesheet">
 
     <!-- Icon Font Stylesheet -->
@@ -34,7 +32,8 @@
 <body>
     <!-- Spinner Start -->
     <div id="spinner" class="show bg-white position-fixed translate-middle w-100 vh-100 top-50 start-50 d-flex align-items-center justify-content-center">
-        <div class="spinner-border text-primary" role="status"></div>
+        <div class="spinner-border text-primary" role="status" aria-hidden="true"></div>
+        <span class="visually-hidden">Loading...</span>
     </div>
     <!-- Spinner End -->
 
@@ -45,7 +44,7 @@
                 <div class="col-lg-6">
                     <div class="section-header text-start mb-5 wow fadeInUp" data-wow-delay="0.1s" style="max-width: 500px;">
                         <h1 class="display-5 mb-3">Our Exercises</h1>
-                        <p>Choose the best exercise for your fitness journey</p>
+                        <p>Explore a variety of exercises tailored for all fitness levels</p>
                     </div>
                 </div>
             </div>
@@ -53,29 +52,34 @@
                 <div id="tab-exercises" class="tab-pane fade show p-0 active">
                     <div class="row g-4">
                         {% for exercise in Exercises %}
-                        <div class="col-xl-3 col-lg-4 col-md-6 wow fadeInUp" data-wow-delay="0.5s">
-                            <div class="product-item">
-                                <div class="position-relative bg-light overflow-hidden">
-                                    <img class="img-fluid w-100" 
-                                         src="{{ exercise['Media'] if exercise['Media'].startswith('http') else url_for('static', filename=exercise['Media']) }}" 
+                        <div class="col-xl-3 col-lg-4 col-md-6 col-sm-12 wow fadeInUp" data-wow-delay="0.5s">
+                            <div class="card border-0 shadow-sm">
+                                <div class="position-relative overflow-hidden">
+                                    <img class="img-fluid w-100"
+                                         src="{{ exercise['Media'] if exercise['Media'] else url_for('static', filename='img/default-exercise.jpg') }}"
                                          alt="{{ exercise['Name'] }}">
-                                    <div class="bg-secondary rounded text-white position-absolute start-0 top-0 m-4 py-1 px-3">Duration: {{ exercise['Duration'] }} mins</div>
+                                    <div class="bg-secondary text-white position-absolute top-0 start-0 m-3 py-1 px-3 rounded">Duration: {{ exercise['Duration'] }} mins</div>
                                 </div>
-                                <div class="text-center p-4">
-                                    <h5 class="d-block mb-2">{{ exercise['Name'] }}</h5>
+                                <div class="card-body text-center">
+                                    <h5 class="card-title">{{ exercise['Name'] }}</h5>
+                                    {% if exercise['Equipment'] %}
+                                    <p class="small text-muted">Equipment: {{ exercise['Equipment'] }}</p>
+                                    {% endif %}
+                                    {% if exercise['Muscles_Targeted'] %}
+                                    <p class="small text-muted">Muscles Targeted: {{ exercise['Muscles_Targeted'] }}</p>
+                                    {% endif %}
                                 </div>
-                                <div class="d-flex border-top">
-                                    <small class="w-100 text-center py-2">
-                                        <a class="text-body" href="{{ url_for('GetExerciseDetails', exercise_id=exercise['Exercise_ID']) }}">
-                                            <i class="fa fa-eye text-primary me-2"></i>View Details
-                                        </a>
-                                    </small>
+                                <div class="card-footer bg-light text-center">
+                                    <a class="btn btn-primary btn-sm" href="{{ url_for('GetExerciseDetails', exercise_id=exercise['Exercise_ID']) }}" data-bs-toggle="tooltip" title="View more details">
+                                        <i class="fa fa-eye"></i> View Details
+                                    </a>
                                 </div>
                             </div>
                         </div>
                         {% endfor %}
                     </div>
-                    
+                </div>
+            </div>
         </div>
     </div>
     <!-- Exercises Section End -->
@@ -90,6 +94,16 @@
     <script src="{{ url_for('static', filename='lib/easing/easing.min.js') }}"></script>
     <script src="{{ url_for('static', filename='lib/waypoints/waypoints.min.js') }}"></script>
     <script src="{{ url_for('static', filename='lib/owlcarousel/owl.carousel.min.js') }}"></script>
+
+    <!-- Tooltip Initialization -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            tooltipTriggerList.forEach(function (tooltipTriggerEl) {
+                new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+        });
+    </script>
 
     <!-- Template Javascript -->
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>

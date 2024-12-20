@@ -2,6 +2,9 @@
 from flask import Flask, render_template, request, session, flash, redirect, url_for, send_file
 import io
 from io import BytesIO
+from flask import Flask, render_template, request, session, flash, redirect, url_for, send_file
+import io
+from io import BytesIO
 import sqlite3
 import random
 from datetime import datetime
@@ -62,7 +65,9 @@ def home_page():
         user = conn.execute('SELECT * FROM User WHERE User_ID = ?', (User_ID,)).fetchone()
         conn.close()
         img = serve_image("User", user[0])
+        img = serve_image("User", user[0])
         # send the user to the homepage
+        return render_template("homepage.html", user=user, img=img)
         return render_template("homepage.html", user=user, img=img)
     # if there's no user logged in, redirects them to the login page
     return redirect(url_for('login'))
@@ -98,6 +103,138 @@ def login():
     return render_template("login.html")
 
 
+@app.route('/personal_profile', methods=['GET', 'POST'])
+def personalProfile():
+    conn = get_db_connection()
+    role = conn.execute('SELECT Role FROM User WHERE User_ID = ?',
+                        (session["User_ID"],)).fetchone()
+    conn.close()
+    if role[0] == "Trainee":
+        return redirect(url_for("personalProfileTraineeStats"))
+    elif role[0] == "Coach":
+        return redirect(url_for("personalProfileCoach"))
+    else:
+        return redirect(url_for("home_page"))
+
+
+@app.route('/profileTraineeStats', methods=['GET', 'POST'])
+def personalProfileTraineeStats():
+    conn = get_db_connection()
+    gen_info = conn.execute('SELECT * FROM User WHERE User_ID = ?', (session["User_ID"],)).fetchone()
+    trainee_info = conn.execute('SELECT * FROM Trainee WHERE Trainee_ID = ?', (session["User_ID"],)).fetchone()
+    conn.close()
+    pfp = serve_image("User", session["User_ID"])
+    return render_template("personal_profile_trainee_stats.html", gen_info=gen_info, pfp=pfp, trainee_info=trainee_info)
+
+
+@app.route('/profileTraineePosts', methods=['GET', 'POST'])
+def personalProfileTraineePosts():
+    conn = get_db_connection()
+    gen_info = conn.execute('SELECT * FROM User WHERE User_ID = ?', (session["User_ID"],)).fetchone()
+    trainee_info = conn.execute('SELECT * FROM Trainee WHERE Trainee_ID = ?', (session["User_ID"],)).fetchone()
+    personal_posts = conn.execute('SELECT * FROM Post WHERE User_ID = ? ORDER BY Time_Stamp DESC',
+                                  (session["User_ID"],)).fetchall()
+    posts_comments = []
+    for post in personal_posts:
+        comments = conn.execute('SELECT * FROM Comment JOIN Post ON Post.Post_ID = Comment.Post_ID '
+                                'JOIN User ON User.User_ID = Comment.User_ID '
+                                'WHERE Post.Post_ID = ?', (post[0],)).fetchall()
+        posts_comments.append(comments)
+    username = conn.execute('SELECT Name FROM User WHERE User_ID = ?', (session["User_ID"],)).fetchone()
+    conn.close()
+    posts_with_comments = []
+    # print(posts_comments[0][0][1])
+    # print(personal_posts[0][0])
+    for i in range(len(personal_posts)):
+        post = personal_posts[i]
+        if posts_comments[i]:
+            comments = [
+                {'Username': comment[0][12], 'Content': comment[0][3]}
+                for comment in posts_comments
+                if comment[0][1] == post[0]
+            ]
+            posts_with_comments.append({
+                'post': {
+                    'Post_ID': post['Post_ID'],
+                    'Content': post['Content'],
+                    'Media': post['Media'],
+                    'Username': username[0],
+                    'User_ID': post['User_ID'],
+                    'Time_Stamp': post['Time_Stamp']
+                },
+                'comments': comments
+            })
+        else:
+            posts_with_comments.append({
+                'post': {
+                    'Post_ID': post['Post_ID'],
+                    'Content': post['Content'],
+                    'Media': post['Media'],
+                    'Username': post['Username'],
+                    'User_ID': post['User_ID'],
+                    'Time_Stamp': post['Time_Stamp']
+                },
+                'comments': []
+            })
+    pfp = serve_image("User", session["User_ID"])
+    return render_template("personal_profile_trainee_posts.html", posts_with_comments=posts_with_comments,
+                           pfp=pfp, gen_info=gen_info, trainee_info=trainee_info)
+
+
+@app.route('/forgotPW', methods=['GET', 'POST'])
+def forgotPW():
+    if 'fp_email' not in session:
+        session['fp_email'] = None
+    if 'security_question' not in session:
+        session["security_question"] = None
+    if "show_pw_change" not in session:
+        session["show_pw_change"] = False
+    show_sq = False
+
+    if request.method == 'POST':
+        if (session['fp_email'] and session['security_question'] and session["show_pw_change"] is True
+                and 'new_pw' in request.form):
+            new_pw = request.form['new_pw']
+            conn = get_db_connection()
+            userid = conn.execute('SELECT User_ID FROM User WHERE Email = ?', (session["fp_email"],)).fetchone()
+            conn.execute('UPDATE User SET Password = ? WHERE User_ID = ?', (new_pw, userid[0]))
+            conn.commit()
+            conn.close()
+            session.pop('fp_email', None)
+            session.pop('security_question', None)
+            session.pop('show_pw_change', None)
+            return redirect(url_for("login"))
+
+        elif session['fp_email']:
+            if 'answer' in request.form:
+                answer = request.form['answer'].lower()
+                if session["security_question"] and answer == session["security_question"][1].lower():
+                    session["show_pw_change"] = True
+                else:
+                    flash("Incorrect security answer. Try again.", "error")
+        elif 'email' in request.form and request.form['email']:
+            email = request.form['email']
+            session['fp_email'] = email
+            conn = get_db_connection()
+            user_sq = conn.execute('SELECT Security_Question FROM User WHERE Email = ?', (email,)).fetchone()
+            conn.close()
+
+            if user_sq:
+                session["security_question"] = user_sq[0].split(",")
+                show_sq = True
+            else:
+                flash("Invalid email. Try again.", "error")
+                session['fp_email'] = None
+                session['security_question'] = None
+
+    if session['fp_email'] and session["security_question"]:
+        show_sq = True
+    return render_template(
+        "forgotPW.html", show_sq=show_sq,
+        security_question=session["security_question"][0] if session["security_question"]
+        else "", show_pw_change=session["show_pw_change"])
+
+
 # user redirection per user role
 @app.route('/redirect', methods=['GET', 'POST'])
 def redirectPerRole():
@@ -117,10 +254,10 @@ def redirectPerRole():
         conn.close()
         # if a coach is verified direct to homepage
         if verification == "TRUE":
-            return redirect(url_for('home_page'))
-        # if not flash a message to inform them they can't access the site yet
-        return "Please wait to be verified :)"
-    return redirect(url_for('home_page'))
+            return redirect(url_for('posts'))
+        session.pop('User_ID', None)
+        return render_template("await_verification.html")
+    return redirect(url_for('posts'))
 
 
 # log out users
@@ -138,6 +275,9 @@ def logout():
 @app.route('/trainee', methods=["GET", "POST"])
 def traineeSignUp():
     email_exists = False
+    questions = ["What was your dream job as a child?", "What was the name of your first stuffed animal?",
+                 "What was the color of your favorite childhood blanket?"]
+    security_question = questions[np.random.randint(0, len(questions))]
     # save the trainee's information based on their input
     if request.method == 'POST':
         role = "Trainee"
@@ -151,6 +291,7 @@ def traineeSignUp():
         password = request.form['password']
         bmi = round(int(weight) / (float(height) ** 2), 2)
         interests_id = request.form.getlist('interests')
+        security_answer = request.form['sec_ans']
 
         conn = get_db_connection()
         # save interests entered by their names
@@ -166,10 +307,12 @@ def traineeSignUp():
         # check if email already used for another user
         email_check = conn.execute('SELECT * FROM User WHERE Email = ?', (email,)).fetchone()
         if not email_check:
+            sec_qa = security_question + "," + security_answer
             # add trainee to user table
-            conn.execute('INSERT INTO User (User_ID, Name, Email, Age, Gender, Password, Role, Interests) '
-                         'VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-                         (userid, username, email, age, gender, password, role, interests))
+            conn.execute('INSERT INTO User (User_ID, Name, Email, Age, Gender, Password, '
+                         'Role, Interests, Security_Question) '
+                         'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                         (userid, username, email, age, gender, password, role, interests, sec_qa))
 
             # add trainee to trainee table
             conn.execute('INSERT INTO Trainee (Trainee_ID, Weight_kg, Height_m, BMI, Exercise_Level) '
@@ -199,12 +342,17 @@ def traineeSignUp():
     conn = get_db_connection()
     all_interests = conn.execute('SELECT * FROM Interest').fetchall()
     conn.close()
-    return render_template("traineeSignUp.html", interests=all_interests, email_exists=email_exists)
+    return render_template("traineeSignUp.html", interests=all_interests, email_exists=email_exists,
+                           security_question=security_question)
 
 
 # coach sign-up
 @app.route('/coach', methods=["GET", "POST"])
 def coachSignUp():
+    email_exists = False
+    questions = ["What was your dream job as a child?", "What was the name of your first stuffed animal?",
+                 "What was the color of your favorite childhood blanket?"]
+    security_question = questions[np.random.randint(0, len(questions))]
     # save the coach's information based on their input
     if request.method == 'POST':
         role = "Coach"
@@ -215,9 +363,16 @@ def coachSignUp():
         expYears = str(request.form['expYears']) + " years"
         expDesc = request.form['expDesc']
         gender = request.form['gender']
-        certificates = request.form['certificates']
+        certificates = request.files['certificates']
         password = request.form['password']
         interests_id = request.form.getlist('interests')
+        security_answer = request.form['sec_ans']
+
+        certificates_data = []
+        for certificate in certificates:
+            with open(certificate, 'rb') as file:
+                certificate_data = file.read()
+                certificates_data.append(certificate_data)
 
         conn = get_db_connection()
         # save interests entered by their names
@@ -230,25 +385,32 @@ def coachSignUp():
         userid_count = conn.execute('SELECT COUNT(*) FROM User').fetchone()
         userid = str(userid_count[0] + 1)
 
-        # add coach to user table
-        conn.execute('INSERT INTO User (User_ID, Name, Email, Age, Gender, Password, Role, Interests) '
-                     'VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-                     (userid, username, email, age, gender, password, role, interests))
+        # check if email already used for another user
+        email_check = conn.execute('SELECT * FROM User WHERE Email = ?', (email,)).fetchone()
+        if not email_check:
+            sec_qa = security_question + "," + security_answer
+            # add coach to user table
+            conn.execute('INSERT INTO User (User_ID, Name, Email, Age, Gender, Password, '
+                         'Role, Interests, Security_Question) '
+                         'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                         (userid, username, email, age, gender, password, role, interests, sec_qa))
 
-        # add coach to coach table
-        conn.execute('INSERT INTO Coach (Coach_ID, Verified, Description, Experience, Certificates) '
-                     'VALUES (?, ?, ?, ?, ?)',
-                     (userid, verified, expDesc, expYears, certificates))
+            # add coach to coach table
+            conn.execute('INSERT INTO Coach (Coach_ID, Verified, Description, Experience, Certificates) '
+                         'VALUES (?, ?, ?, ?, ?)',
+                         (userid, verified, expDesc, expYears, certificates_data))
 
-        conn.commit()
-        conn.close()
-        # return user to login page
-        return redirect(url_for('login'))
+            conn.commit()
+            conn.close()
+            # return user to login page
+            return redirect(url_for('login'))
+        email_exists = True
     # get all interests from database to show in form
     conn = get_db_connection()
     all_interests = conn.execute('SELECT * FROM Interest').fetchall()
     conn.close()
-    return render_template("coachSignUp.html", interests=all_interests)
+    return render_template("traineeSignUp.html", interests=all_interests, email_exists=email_exists,
+                           security_question=security_question)
 
 
 # admin page
@@ -269,9 +431,20 @@ def verifyCoach():
     coachID = request.form['verify_coach']
     conn = get_db_connection()
     # updates coach status to verified
+    coach_mail = conn.execute('SELECT Email From User WHERE User_ID=?', (coachID,)).fetchone()[0]
     conn.execute('UPDATE Coach SET Verified = "TRUE" WHERE Coach_ID=?', (coachID,))
     conn.commit()
     conn.close()
+    app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+    app.config['MAIL_PORT'] = 465
+    app.config['MAIL_USERNAME'] = '******'
+    app.config['MAIL_PASSWORD'] = '******'
+    app.config['MAIL_USE_TLS'] = False
+    app.config['MAIL_USE_SSL'] = True
+    mail = Mail(app)
+    msg = Message('FitHub Verification', sender='******', recipients=[coach_mail])
+    msg.body = "Congratulation! You got verified, you can now access our site as a coach :D"
+    mail.send(msg)
     # return to admin page
     return redirect(url_for('unverifiedCoaches'))
 
@@ -358,9 +531,9 @@ def fetch_remaining_posts(conn, user_interests):
                FROM Post 
                JOIN User ON Post.User_ID = User.User_ID
                WHERE Post.Post_ID NOT IN (
-                   SELECT Post.Post_ID 
-                   FROM Post 
-                   JOIN Interest 
+                   SELECT Post.Post_ID
+                   FROM Post
+                   JOIN Interest
                    ON Post.Tags LIKE '%' || Interest.Interest_ID || '%'
                    WHERE Interest.Name IN ({}))
                ORDER BY Post.Time_Stamp DESC'''.format(', '.join(['?'] * len(user_interests))),
@@ -435,7 +608,8 @@ def posts():
 
         conn.close()  # close database connection
         # render posts page with user, posts, and interests
-        return render_template("posts.html", user=user, posts_with_comments=posts_with_comments, interests=all_interests)
+        return render_template("posts.html", user=user, posts_with_comments=posts_with_comments,
+                               interests=all_interests)
 
     # redirect to login page if user is not logged in
     return redirect(url_for('login'))
@@ -479,49 +653,64 @@ def add_recipe():
         return redirect(url_for('login'))
 
     User_ID = str(session['User_ID'])
+    
     if request.method == 'POST':
+        # Get form data
         recipe_name = request.form.get('Recipe_Name')
         meal_type = request.form.get('Meal_Type')
         nutrition_info = request.form.get('Nutrition_Information')
-        media = request.form.get('Media')
+        media = request.files.get('Media')
         steps = request.form.get('Steps')
         ingredients = request.form.get('Ingredients')
-
-        # Validate form data
-        if not recipe_name or not meal_type or not nutrition_info or not media or not steps or not ingredients:
-            return "All fields are required!"
+        if not (recipe_name and meal_type and nutrition_info and media and steps and ingredients):
+            flash("All fields are required!", 'error')
+            return redirect(url_for('add_recipe'))
 
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
 
-            # Find the max Recipe_ID and increment it
+            # Generate a new Recipe_ID
             cursor.execute("SELECT MAX(CAST(Recipe_ID AS INTEGER)) FROM Recipe")
             max_id = cursor.fetchone()[0]
             new_recipe_id = str((max_id + 1) if max_id is not None else 1)  # Handle case where table is empty
-
             print(f"Generated new Recipe_ID: {new_recipe_id}")
+            temp_path = f"uploads/{media.filename}"
+            media.save(temp_path)
 
-            # Insert the new recipe
+            # Upload media file and get its unique identifier
+            drive_file_id = upload(temp_path, media.filename)
+            if not drive_file_id:
+                os.remove(temp_path) 
+                flash("Failed to upload media file. Please try again.", 'error')
+                return redirect(url_for('add_recipe'))
+            
+            os.remove(temp_path)
+            print(f"Uploaded media file ID: {drive_file_id}")
+
+            # Insert the new recipe details into the database
             cursor.execute("""
-                INSERT INTO Recipe (Recipe_ID, Coach_ID, Recipe_Name, Meal_Type, Nutrition_Information, Media, Steps, Ingredients)
+                INSERT INTO Recipe (Recipe_ID, Coach_ID, Recipe_Name, Meal_Type,
+                Nutrition_Information, Media, Steps, Ingredients)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """, (new_recipe_id, User_ID, recipe_name, meal_type, nutrition_info, media, steps, ingredients))
+            """, (new_recipe_id, User_ID, recipe_name, meal_type, nutrition_info, drive_file_id, steps, ingredients))
 
             conn.commit()
+            conn.close()
 
             print(f"New Recipe added successfully with ID: {new_recipe_id}")
+            flash(f"Recipe added successfully with ID: {new_recipe_id}!", 'success')
+            return redirect(url_for('GetRecipes'))
 
         except Exception as e:
             print(f"Error occurred while adding recipe: {str(e)}")
-            return f"An error occurred: {str(e)}. Please try again later."
-
-        return redirect(url_for('GetRecipes'))
+            flash(f"An error occurred: {str(e)}. Please try again later.", 'error')
+            return redirect(url_for('add_recipe'))
 
     return render_template('add_recipe.html')
 
 
-#Show all recipes to user
+# Show all recipes to user
 @app.route('/recipes', methods=['GET'])
 def GetRecipes():
     conn = get_db_connection()
@@ -542,7 +731,7 @@ def GetRecipes():
     return render_template('recipes.html', recipes=recipes_data)
 
 
-#Show recipes details when the user click on more details 
+# Show recipes details when the user click on more details
 @app.route('/recipes/<recipe_id>', methods=['GET'])
 def GetRecipeDetails(recipe_id):
     conn = get_db_connection()
@@ -567,7 +756,7 @@ def GetRecipeDetails(recipe_id):
     return render_template('recipes_detailed.html', recipe=recipe_data)
 
 
-#Show coach details for trainee so that he can add the suitable coach for him
+# Show coach details for trainee so that he can add the suitable coach for him
 @app.route('/coaches', methods=['GET'])
 def GetCoach():
     conn = get_db_connection()
@@ -585,25 +774,51 @@ def GetCoach():
     return render_template('coaches_details.html', coaches=coaches_data)
 
 
-#show exercises for users
+# show exercises for users
 @app.route('/exercises', methods=['GET'])
 def GetExercises():
     try:
+        # Fetch exercises from SQL database
         conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM Exercise")
         Exercises_data = [dict(row) for row in cursor.fetchall()]
         conn.close()
-        # Filter out entries with None Exercise_ID
-        valid_exercises = [exercise for exercise in Exercises_data if exercise['Exercise_ID'] is not None]
+        # Authenticate with Google Drive
+        creds = authenticate()
+        service = build('drive', 'v3', credentials=creds)
 
-        return render_template('exercises.html', Exercises=valid_exercises)
+        # Fetch images from Google Drive folder
+        results = service.files().list(
+            q=f"'{MAIN_FOLDER_ID}' in parents and trashed=false",
+            fields="files(id, name, mimeType)"
+        ).execute()
+
+        files = results.get('files', [])
+        if not files:
+            print("No images found in Google Drive folder.")
+
+        # Prepare a mapping of exercise images
+        exercise_images = {}
+        for file in files:
+            # Check if the file name matches the exercise image naming convention
+            for exercise in Exercises_data:
+                exercise_id = exercise['Exercise_ID']
+                if f"exercise{exercise_id}" in file['name']:
+                    exercise_images[exercise_id] = get_file_url(file['id'])
+
+        # Combine exercise metadata with image URLs
+        for exercise in Exercises_data:
+            exercise_id = exercise['Exercise_ID']
+            exercise['Image_URL'] = exercise_images.get(exercise_id, None)
+
+        return render_template('exercises.html', Exercises=Exercises_data)
     except Exception as e:
         print(f"Error fetching exercises: {e}")
         return "Error fetching exercises", 500
 
 
-#Show more details for user about the clicked exercises
+# Show more details for user about the clicked exercises
 @app.route('/exercise/<int:exercise_id>', methods=['GET'])
 def GetExerciseDetails(exercise_id):
     print(f"Received exercise_id: {exercise_id}")
@@ -634,7 +849,7 @@ def GetExerciseDetails(exercise_id):
         return "Exercise not found", 404
 
 
-#Coach can add new exercises
+# Coach can add new exercises
 @app.route('/add_exercises', methods=['GET', 'POST'])
 def AddExercises():
     if 'User_ID' not in session:
@@ -643,15 +858,16 @@ def AddExercises():
     User_ID = str(session['User_ID'])
 
     if request.method == 'POST':
-        name = request.form['Name']
-        media = request.form['Media']
-        duration = request.form['Duration']
-        equipment = request.form['Equipment']
-        description = request.form['Description']
-        muscles_targeted = request.form['Muscles_Targeted']
+        # Get form data
+        name = request.form.get('Name')
+        media = request.files.get('Media')
+        duration = request.form.get('Duration')
+        equipment = request.form.get('Equipment')
+        description = request.form.get('Description')
+        muscles_targeted = request.form.get('Muscles_Targeted')
 
         # Validate form data
-        if not name or not media or not duration or not equipment or not description or not muscles_targeted:
+        if not (name and media and duration and equipment and description and muscles_targeted):
             flash("All fields are required!", 'error')
             return redirect(url_for('AddExercises'))
 
@@ -659,20 +875,34 @@ def AddExercises():
             conn = get_db_connection()
             cursor = conn.cursor()
 
-            while True:  # add a new random exercise id
+            # Generate a new random exercise ID
+            random_exercise_id = random.randint(1000, 9999)
+            cursor.execute("SELECT 1 FROM Exercise WHERE Exercise_ID = ?", (random_exercise_id,))
+            while cursor.fetchone():
                 random_exercise_id = random.randint(1000, 9999)
-                cursor.execute("SELECT 1 FROM Exercise WHERE Exercise_ID = ?", (random_exercise_id,))
-                if not cursor.fetchone():
-                    break
+            print(f"Generated Exercise ID: {random_exercise_id}")
+            temp_path = f"uploads/{media.filename}"
+            media.save(temp_path)
 
+            drive_file_id = upload(temp_path, media.filename)
+            if not drive_file_id:
+                os.remove(temp_path)  # Clean up temporary file if upload failed
+                flash("Failed to upload media file. Please try again.", 'error')
+                return redirect(url_for('AddExercises'))
+            # Clean up the temporary file
+            os.remove(temp_path)
+            print(f"Uploaded media file ID: {drive_file_id}")
+            # Insert the exercise details into the database
             cursor.execute("""
-                INSERT INTO Exercise (Exercise_ID, Coach_ID, Name, Media, Duration, Equipment, Description, Muscles_Targeted)
+                INSERT INTO Exercise (Exercise_ID, Coach_ID, Name, Media,
+                Duration, Equipment, Description, Muscles_Targeted)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """, (random_exercise_id, User_ID, name, media, duration, equipment, description, muscles_targeted))
+            """, (random_exercise_id, User_ID, name, drive_file_id, duration, equipment, description, muscles_targeted))
 
             conn.commit()
             conn.close()
 
+            print(f"Exercise added successfully with ID: {random_exercise_id}!")
             flash(f"Exercise added successfully with ID: {random_exercise_id}!", 'success')
             return redirect(url_for('GetExerciseDetails', exercise_id=random_exercise_id))
 
@@ -683,6 +913,11 @@ def AddExercises():
 
     return render_template('add_exercise.html')
 
+#def add_recipe():
+
+ 
 
 if __name__ == '__main__':
     app.run(host="127.0.0.1", port=5000, debug=True)
+
+    
