@@ -5,6 +5,9 @@ from io import BytesIO
 import sqlite3
 import random
 from datetime import datetime
+from flask_mail import Mail, Message
+import numpy as np
+import base64
 
 # database path
 DATABASE = 'FitHub_DB.sqlite'
