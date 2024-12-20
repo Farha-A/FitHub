@@ -157,6 +157,7 @@ def editProfileTrainee():
                      (weight, height, session["User_ID"]))
         conn.commit()
         conn.close()
+        return redirect(url_for("personalProfileTraineeStats"))
 
     return render_template("edit_profile_trainee.html", gen_info=gen_info, trainee_info=trainee_info,
                            interests=all_interests)
@@ -256,17 +257,60 @@ def personalProfileTraineePlan():
                            gen_info=gen_info, trainee_info=trainee_info, pfp=pfp)
 
 
-@app.route('/personalProfileCoachInformation', methods=['GET', 'POST'])
+@app.route('/profileCoachInformation', methods=['GET', 'POST'])
 def personalProfileCoachInformation():
     conn = get_db_connection()
     gen_info = conn.execute('SELECT * FROM User WHERE User_ID = ?', (session["User_ID"],)).fetchone()
     coach_info = conn.execute('SELECT * FROM Coach WHERE Coach_ID = ?', (session["User_ID"],)).fetchone()
     conn.close()
     certificates = coach_info[4].split(" ")
-    print(certificates)
     pfp = serve_image("User", session["User_ID"])
     return render_template("personal_profile_coach_information.html", gen_info=gen_info, pfp=pfp,
                            coach_info=coach_info, certificates=certificates)
+
+
+@app.route('/editProfileCoach', methods=['GET', 'POST'])
+def editProfileCoach():
+    conn = get_db_connection()
+    gen_info = conn.execute('SELECT * FROM User WHERE User_ID = ?', (session["User_ID"],)).fetchone()
+    coach_info = conn.execute('SELECT * FROM Coach WHERE Coach_ID = ?', (session["User_ID"],)).fetchone()
+    all_interests = conn.execute('SELECT * FROM Interest').fetchall()
+    conn.close()
+    if request.method == 'POST':
+        pfp_file = request.files['pfp']
+        username = request.form['username']
+        pw = request.form['password']
+        age = request.form['age']
+        interests_id = request.form.getlist('interests')
+        expYears = request.form['expYears']
+        expDesc = request.form['expDesc']
+        certificates = request.form['certificates']
+
+        conn = get_db_connection()
+        with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+            temp_file.write(pfp_file.read())
+            temp_file_path = temp_file.name
+        pfp = photo_to_binary(temp_file_path)
+        os.remove(temp_file_path)
+        interests = ""
+        for intr in interests_id:
+            inter = conn.execute('SELECT Name FROM Interest WHERE Interest_ID = ?', (intr,)).fetchone()
+            interests += inter[0] + ","
+        interests = interests[:-1]
+        if pfp_file:
+            conn.execute('UPDATE User SET Profile_picture=?, Name=?, Password=?, Age=?, Interests=? WHERE User_ID=?',
+                         (pfp, username, pw, age, interests, session["User_ID"]))
+        else:
+            conn.execute('UPDATE User SET Name=?, Password=?, Age=?, Interests=? WHERE User_ID=?',
+                         (username, pw, age, interests, session["User_ID"]))
+        conn.execute('UPDATE Coach SET Description=?, Experience=?, Certificates=? WHERE Coach_ID=?',
+                     (expDesc, expYears, certificates, session["User_ID"]))
+        conn.commit()
+        conn.close()
+        return redirect(url_for("personalProfileCoachInformation"))
+
+    return render_template("edit_profile_coach.html", gen_info=gen_info, coach_info=coach_info,
+                           interests=all_interests)
 
 
 @app.route('/forgotPW', methods=['GET', 'POST'])
