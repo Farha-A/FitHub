@@ -37,7 +37,8 @@ def serve_image(table, table_id):
     if table == "User":
         query = f'SELECT Profile_picture FROM {table} WHERE User_ID = ?'
     else:
-        query = f'SELECT Media FROM {table} WHERE User_ID = ?'
+        tid = table + "_ID"
+        query = f'SELECT Media FROM {table} WHERE {tid} = ?'
     image_data = conn.execute(query, (table_id,)).fetchone()
     conn.close()
     print(image_data)
@@ -178,7 +179,7 @@ def personalProfileTraineePosts():
                 'comments': []
             })
     pfp = serve_image("User", session["User_ID"])
-    return render_template("personal_profile_posts.html", posts_with_comments=posts_with_comments,
+    return render_template("personal_profile_trainee_posts.html", posts_with_comments=posts_with_comments,
                            pfp=pfp, gen_info=gen_info, trainee_info=trainee_info)
 
 
