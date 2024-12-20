@@ -7,16 +7,18 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='personal_profile_trainee_stats.css') }}">
 </head>
 <body>
-<img src="{{ pfp }}" alt="Profile photo">
 <div class="top-banner">
-    <p>
-        {{ gen_info[1] }} <br>
-        Age: {{ gen_info[5] }}<br>
-        Height: {{ trainee_info[3] }} m
-        <form method="post">
-            <button type="submit">Edit Profile</button>
-        </form>
-    </p>
+    <div class="user-info-wrapper">
+    <img src="{{ pfp }}" alt="Profile photo">
+        <p>
+            {{ gen_info[1] }} <br>
+            Age: {{ gen_info[5] }}<br>
+            Height: {{ trainee_info[3] }} m
+        </p>
+    </div>
+            <form action="/editProfileTrainee">
+                <button type="submit">Edit Profile</button>
+            </form>
 </div>
 <div class="redirections">
     <form action="/profileTraineeStats">
@@ -31,11 +33,23 @@
 </div>
 <div class="content">
     <p>
-        {# workout #}
         {# calories #}
         BMI: {{ trainee_info[4] }}<br>
-        Weight: {{ trainee_info[2] }}<br>
+        Weight: {{ trainee_info[2] }} KG<br>
+        Nutrition information for the day:<br>
+        Calories consumed: {{ nutrition[0] }}<br>
+        Carbs consumed: {{ nutrition[1] }}<br>
+        Protein consumed: {{ nutrition[2] }}<br>
+        Fat consumed: {{ nutrition[3] }}<br>
+        Total exercise time: {{ workout_time }}<br>
+        Exercises done: {% for exercise in exercises %}
+        <img src="{{ exercise[0] }}" alt="img"> {{ exercise[1] }}<br>
+        {% endfor %}
     </p>
+        <form method="post">
+            <button type="submit">Add Exercise Time</button>
+        </form>
+
 </div>
 
 </body>

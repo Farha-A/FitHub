@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Profile Edit</title>
+</head>
+<body>
+<form method="post">
+    <label for="pfp">Profile Picture:</label><br>
+    <input type="file" id="pfp" name="pfp"><br>
+    <label for="username">Username:</label><br>
+    <input type="text" id="username" name="username" value="{{ gen_info[1] }}"><br>
+    <label for="password">Password:</label><br>
+    <input type="password" id="password" name="password" value="{{ gen_info[3] }}"><br>
+    <label for="age">Age:</label><br>
+    <input type="text" id="age" name="age" value="{{ gen_info[5] }}"><br>
+    <label for="height">Height:</label><br>
+    <input type="text" id="height" name="height" value="{{ trainee_info[3] }}"><br>
+    <label for="weight">Weight:</label><br>
+    <input type="text" id="weight" name="weight" value="{{ trainee_info[2] }}"><br>
+    {% for interest in interests %}
+        <input type="checkbox" id="interest-{{ interest[0] }}" name="interests" value="{{ interest[0] }}">
+        <label for="interest-{{ interest[0] }}">{{ interest[1] }}</label>
+    {% endfor %}
+    
+    <button type="submit">Save Changes</button>
+</form>
+</body>
+</html>

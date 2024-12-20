@@ -1,6 +1,6 @@
 # importing necessary libraries
+import tempfile
 from flask import Flask, render_template, request, session, flash, redirect, url_for, send_file
-import io
 from io import BytesIO
 import sqlite3
 import random
@@ -8,6 +8,8 @@ from datetime import datetime
 from flask_mail import Mail, Message
 import numpy as np
 import base64
+import ast
+import os
 
 # database path
 DATABASE = 'FitHub_DB.sqlite'
@@ -41,20 +43,17 @@ def serve_image(table, table_id):
         query = f'SELECT Media FROM {table} WHERE {tid} = ?'
     image_data = conn.execute(query, (table_id,)).fetchone()
     conn.close()
-    print(image_data)
-    if image_data is not None:
-        print("what")
-        # return default profile photo if user hasn't uploaded a profile picture
-        if table == "User":
-            if not image_data or not image_data[0]:
-                return 'static/default_profile.jpg'
-        # change string into base64 to be read properly
-        if isinstance(image_data[0], str):
-            image_data = base64.b64decode(image_data[0])
-            base64_image = base64.b64encode(image_data).decode('utf-8')
-            return f"data:image/jpeg;base64,{base64_image}"
-        # send image
-        return send_file(BytesIO(image_data), mimetype='image/jpg', as_attachment=False)
+    # return default profile photo if user hasn't uploaded a profile picture
+    if table == "User":
+        if image_data is None or image_data[0] is None:
+            return 'static/default_profile.jpg'
+    # change string into base64 to be read properly
+    if isinstance(image_data[0], str):
+        image_data = base64.b64decode(image_data[0])
+        base64_image = base64.b64encode(image_data).decode('utf-8')
+        return f"data:image/jpeg;base64,{base64_image}"
+    # send image
+    return send_file(BytesIO(image_data), mimetype='image/jpg', as_attachment=False)
 
 
 # load homepage
@@ -119,14 +118,35 @@ def personalProfile():
         return redirect(url_for("home_page"))
 
 
+@app.route('/editProfileTrainee', methods=['GET', 'POST'])
+def editProfileTrainee():
+    conn = get_db_connection()
+    gen_info = conn.execute('SELECT * FROM User WHERE User_ID = ?', (session["User_ID"],)).fetchone()
+    trainee_info = conn.execute('SELECT * FROM Trainee WHERE Trainee_ID = ?', (session["User_ID"],)).fetchone()
+    conn.close()
+    return render_template("edit_profile_trainee.html", gen_info=gen_info, trainee_info=trainee_info)
+
+
 @app.route('/profileTraineeStats', methods=['GET', 'POST'])
 def personalProfileTraineeStats():
     conn = get_db_connection()
     gen_info = conn.execute('SELECT * FROM User WHERE User_ID = ?', (session["User_ID"],)).fetchone()
     trainee_info = conn.execute('SELECT * FROM Trainee WHERE Trainee_ID = ?', (session["User_ID"],)).fetchone()
+    # exercise_done = conn.execute('SELECT Trainee_Exercises FROM Trainee WHERE Trainee_ID = ?',
+    #                              (session["User_ID"],)).fetchone()
+    # exercises_done = exercise_done[0].split(",")
+    exercises = []
+    workout_time = 0
+    nutrition = []
+    # for exercise in exercises_done:
+    #     ex = conn.execute('SELECT Media, Name, Duration FROM Exercise WHERE Exercise_ID = ?',
+    #                       (str(exercise),)).fetchall()
+    #     exercises.append(ex[0])
+    #     workout_time += ex[0][2]
     conn.close()
     pfp = serve_image("User", session["User_ID"])
-    return render_template("personal_profile_trainee_stats.html", gen_info=gen_info, pfp=pfp, trainee_info=trainee_info)
+    return render_template("personal_profile_trainee_stats.html", gen_info=gen_info, pfp=pfp, trainee_info=trainee_info,
+                           exercises=exercises, workout_time=workout_time, nutrition=nutrition)
 
 
 @app.route('/profileTraineePosts', methods=['GET', 'POST'])
@@ -466,64 +486,79 @@ def denyCoach():
     return redirect(url_for('unverifiedCoaches'))
 
 
-# route to display and create posts
-@app.route('/posts', methods=['GET', 'POST'])
-def posts():
-    # check if a user is logged in
-    if 'User_ID' in session:
-        User_ID = session['User_ID']  # get user id from session
-        conn = get_db_connection()  # connect to database
+# function to get user information
+def get_user(User_ID):
+    conn = get_db_connection()  # connect to database
+    user = conn.execute('SELECT * FROM User WHERE User_ID = ?', (User_ID,)).fetchone()  # fetch user info
+    return user, conn
 
-        # fetch user information from the database
-        user = conn.execute('SELECT * FROM User WHERE User_ID = ?', (User_ID,)).fetchone()
 
-        # fetch all available interests from the database
-        all_interests = conn.execute('SELECT * FROM Interest').fetchall()
+# function to get all interests
+def get_interests(conn):
+    return conn.execute('SELECT * FROM Interest').fetchall()  # fetch all interests
 
-        # handle post submission
-        if request.method == 'POST':
-            post_content = request.form['content']  # get post content
-            post_media = request.form.get('media')  # get post media (to be handled)
-            selected_tags = request.form.getlist('tags')  # get selected tags as a list
 
-            # calculate new post id
-            postid_count = conn.execute('SELECT COUNT(*) FROM Post').fetchone()
-            postid = postid_count[0] + 1  # increment post count for unique id
+# function to handle post submission
+# function to handle post submission
+def share_post(conn, post_content, post_media, selected_tags, user):
+    postid_count = conn.execute('SELECT COUNT(*) FROM Post').fetchone()
+    postid = postid_count[0] + 1
+    current_time = datetime.now().strftime("%Y-%m-%d %H:%M")
+    tags_str = '/'.join(selected_tags)
 
-            # get current datetime in standardized format
-            current_time = datetime.now().strftime("%Y-%m-%d %H:%M")
+    # Save media to a temporary file and convert to binary data
+    if post_media:
+        # Save the uploaded file to a temporary file
+        with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+            temp_file.write(post_media.read())
+            temp_file_path = temp_file.name
 
-            # save post to database with tags as a slash-separated string
-            tags_str = '/'.join(selected_tags)
-            conn.execute(
-                '''INSERT INTO Post (Post_ID, User_ID, Content, Time_Stamp, Media, Tags)
-                   VALUES (?, ?, ?, ?, ?, ?)''',
-                (postid, user['User_ID'], post_content, current_time, post_media, tags_str)
-            )
-            conn.commit()  # commit changes to database
+        # Convert the saved temporary file to binary using photo_to_binary
+        media_data = photo_to_binary(temp_file_path)
 
-        # get user interests as a list
-        user_interests = user['Interests'].split(',') if user['Interests'] else []
-        posts_by_interest = []  # initialize posts matching user interests
+        # Clean up the temporary file
+        os.remove(temp_file_path)
+        print("Media Data:", media_data)
+    else:
+        print("Nooooo")
+        media_data = None
 
-        # fetch posts matching user interests
-        if user_interests:
-            placeholders = ', '.join(['?'] * len(user_interests))  # placeholders for query
-            posts_by_interest = conn.execute(
-                f'''SELECT Post.*, User.Name AS Username
-                    FROM Post
-                    JOIN User ON Post.User_ID = User.User_ID
-                    WHERE EXISTS (
-                        SELECT 1 FROM Interest
-                        WHERE Interest.Name IN ({placeholders})
-                          AND Post.Tags LIKE '%' || Interest.Interest_ID || '%'
-                    )
-                    ORDER BY Post.Time_Stamp DESC''',
-                tuple(user_interests)
-            ).fetchall()
+    conn.execute(
+        '''INSERT INTO Post (Post_ID, User_ID, Content, Time_Stamp, Media, Tags)
+           VALUES (?, ?, ?, ?, ?, ?)''',
+        (postid, user['User_ID'], post_content, current_time, media_data, tags_str)
+    )
+    conn.commit()
 
-        # fetch remaining posts not matching user interests
-        remaining_posts = conn.execute(
+
+# function to get user interests
+def get_user_interests(user):
+    return user['Interests'].split(',') if user['Interests'] else []
+
+
+# function to fetch posts by interest
+def fetch_posts_by_interest(conn, user_interests):
+    if user_interests:
+        placeholders = ', '.join(['?'] * len(user_interests))  # placeholders for query
+        return conn.execute(
+            f'''SELECT Post.*, User.Name AS Username
+                FROM Post
+                JOIN User ON Post.User_ID = User.User_ID
+                WHERE EXISTS (
+                    SELECT 1 FROM Interest
+                    WHERE Interest.Name IN ({placeholders})
+                      AND Post.Tags LIKE '%' || Interest.Interest_ID || '%'
+                )
+                ORDER BY Post.Time_Stamp DESC''',
+            tuple(user_interests)
+        ).fetchall()
+    return []
+
+
+# function to fetch remaining posts
+def fetch_remaining_posts(conn, user_interests):
+    if user_interests:
+        return conn.execute(
             '''SELECT Post.*, User.Name AS Username
                FROM Post
                JOIN User ON Post.User_ID = User.User_ID
@@ -535,42 +570,76 @@ def posts():
                    WHERE Interest.Name IN ({}))
                ORDER BY Post.Time_Stamp DESC'''.format(', '.join(['?'] * len(user_interests))),
             tuple(user_interests)
-        ).fetchall() if user_interests else conn.execute(
-            '''SELECT Post.*, User.Name AS Username
-               FROM Post
-               JOIN User ON Post.User_ID = User.User_ID
-               ORDER BY Post.Time_Stamp DESC'''
         ).fetchall()
+    return conn.execute(
+        '''SELECT Post.*, User.Name AS Username
+           FROM Post
+           JOIN User ON Post.User_ID = User.User_ID
+           ORDER BY Post.Time_Stamp DESC'''
+    ).fetchall()
+
+
+# function to fetch comments with usernames
+def fetch_comments_with_usernames(conn):
+    return conn.execute('''SELECT Comment.*, User.Name AS Username
+                           FROM Comment
+                           JOIN User ON Comment.User_ID = User.User_ID''').fetchall()
+
+
+# function to combine posts with their respective comments
+def combine_posts_and_comments(all_posts, comments_with_usernames):
+    posts_with_comments = []
+    for post in all_posts:
+        post_comments = [
+            {'Username': comment['Username'], 'Content': comment['Content']}
+            for comment in comments_with_usernames
+            if comment['Post_ID'] == post['Post_ID']
+        ]
+        posts_with_comments.append({
+            'post': {
+                'Post_ID': post['Post_ID'],
+                'Content': post['Content'],
+                'Media': post['Media'],
+                'Username': post['Username'],
+                'User_ID': post['User_ID'],
+                'Time_Stamp': post['Time_Stamp']
+            },
+            'comments': post_comments
+        })
+    return posts_with_comments
+
+
+# route to display and create posts
+@app.route('/posts', methods=['GET', 'POST'])
+def posts():
+    # check if a user is logged in
+    if 'User_ID' in session:
+        User_ID = session['User_ID']  # get user id from session
+
+        # Get user info and interests
+        user, conn = get_user(User_ID)
+        all_interests = get_interests(conn)
+
+        # handle post submission
+        if request.method == 'POST':
+            post_content = request.form['content']  # get post content
+            post_media = request.files['media']  # get post media (to be handled)
+            selected_tags = request.form.getlist('tags')  # get selected tags as a list
+            share_post(conn, post_content, post_media, selected_tags, user)
+
+        # get user interests and posts
+        user_interests = get_user_interests(user)
+        posts_by_interest = fetch_posts_by_interest(conn, user_interests)
+        remaining_posts = fetch_remaining_posts(conn, user_interests)
 
         # combine and sort all posts by timestamp
         all_posts = sorted(posts_by_interest + remaining_posts, key=lambda x: x['Time_Stamp'], reverse=True)
 
         # fetch all comments with usernames
-        comments_with_usernames = conn.execute('''
-            SELECT Comment.*, User.Name AS Username
-            FROM Comment
-            JOIN User ON Comment.User_ID = User.User_ID
-        ''').fetchall()
+        comments_with_usernames = fetch_comments_with_usernames(conn)
 
         # combine posts with their respective comments
-        posts_with_comments = []
-        for post in all_posts:
-            post_comments = [
-                {'Username': comment['Username'], 'Content': comment['Content']}
-                for comment in comments_with_usernames
-                if comment['Post_ID'] == post['Post_ID']
-            ]
-            posts_with_comments.append({
-                'post': {
-                    'Post_ID': post['Post_ID'],
-                    'Content': post['Content'],
-                    'Media': post['Media'],
-                    'Username': post['Username'],
-                    'User_ID': post['User_ID'],
-                    'Time_Stamp': post['Time_Stamp']
-                },
-                'comments': post_comments
-            })
+        posts_with_comments = combine_posts_and_comments(all_posts, comments_with_usernames)
 
         conn.close()  # close database connection
         # render posts page with user, posts, and interests
@@ -621,7 +690,7 @@ def add_recipe():
         return redirect(url_for('login'))
 
     User_ID = str(session['User_ID'])
-    
+
     if request.method == 'POST':
         # Get form data
         recipe_name = request.form.get('Recipe_Name')
@@ -649,10 +718,10 @@ def add_recipe():
             # Upload media file and get its unique identifier
             drive_file_id = upload(temp_path, media.filename)
             if not drive_file_id:
-                os.remove(temp_path) 
+                os.remove(temp_path)
                 flash("Failed to upload media file. Please try again.", 'error')
                 return redirect(url_for('add_recipe'))
-            
+
             os.remove(temp_path)
             print(f"Uploaded media file ID: {drive_file_id}")
 
@@ -881,11 +950,9 @@ def AddExercises():
 
     return render_template('add_exercise.html')
 
-#def add_recipe():
 
- 
+# def add_recipe():
+
 
 if __name__ == '__main__':
     app.run(host="127.0.0.1", port=5000, debug=True)
-
-    
