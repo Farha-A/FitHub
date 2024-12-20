@@ -313,6 +313,60 @@ def editProfileCoach():
                            interests=all_interests)
 
 
+@app.route('/profileCoachPosts', methods=['GET', 'POST'])
+def profileCoachPosts():
+    conn = get_db_connection()
+    gen_info = conn.execute('SELECT * FROM User WHERE User_ID = ?', (session["User_ID"],)).fetchone()
+    coach_info = conn.execute('SELECT * FROM Coach WHERE Coach_ID = ?', (session["User_ID"],)).fetchone()
+    personal_posts = conn.execute('SELECT * FROM Post WHERE User_ID = ? ORDER BY Time_Stamp DESC',
+                                  (session["User_ID"],)).fetchall()
+    posts_comments = []
+    for post in personal_posts:
+        comments = conn.execute('SELECT * FROM Comment JOIN Post ON Post.Post_ID = Comment.Post_ID '
+                                'JOIN User ON User.User_ID = Comment.User_ID '
+                                'WHERE Post.Post_ID = ?', (post[0],)).fetchall()
+        posts_comments.append(comments)
+    username = conn.execute('SELECT Name FROM User WHERE User_ID = ?', (session["User_ID"],)).fetchone()
+    conn.close()
+    posts_with_comments = []
+    for i in range(len(personal_posts)):
+        post = personal_posts[i]
+        if posts_comments[i]:
+            comments = [
+                {'Username': comment[12], 'Content': comment[3]}
+                for comment in posts_comments[i]
+                if comment[1] == post[0]
+            ]
+            posts_with_comments.append({
+                'post': {
+                    'pfp': serve_image("User", session["User_ID"]),
+                    'Post_ID': post['Post_ID'],
+                    'Content': post['Content'],
+                    'Media': serve_image("Post", post['Post_ID']),
+                    'Username': username[0],
+                    'User_ID': post['User_ID'],
+                    'Time_Stamp': post['Time_Stamp']
+                },
+                'comments': comments
+            })
+        else:
+            posts_with_comments.append({
+                'post': {
+                    'pfp': serve_image("User", session["User_ID"]),
+                    'Post_ID': post['Post_ID'],
+                    'Content': post['Content'],
+                    'Media': serve_image("Post", post['Post_ID']),
+                    'Username': username[0],
+                    'User_ID': post['User_ID'],
+                    'Time_Stamp': post['Time_Stamp']
+                },
+                'comments': []
+            })
+    pfp = serve_image("User", session["User_ID"])
+    return render_template("personal_profile_coach_posts.html", posts_with_comments=posts_with_comments,
+                           pfp=pfp, gen_info=gen_info, coach_info=coach_info)
+
+
 @app.route('/forgotPW', methods=['GET', 'POST'])
 def forgotPW():
     if 'fp_email' not in session:
