@@ -123,8 +123,41 @@ def editProfileTrainee():
     conn = get_db_connection()
     gen_info = conn.execute('SELECT * FROM User WHERE User_ID = ?', (session["User_ID"],)).fetchone()
     trainee_info = conn.execute('SELECT * FROM Trainee WHERE Trainee_ID = ?', (session["User_ID"],)).fetchone()
+    all_interests = conn.execute('SELECT * FROM Interest').fetchall()
     conn.close()
-    return render_template("edit_profile_trainee.html", gen_info=gen_info, trainee_info=trainee_info)
+    if request.method == 'POST':
+        pfp_file = request.files['pfp']
+        username = request.form['username']
+        pw = request.form['password']
+        age = request.form['age']
+        height = request.form['height']
+        weight = request.form['weight']
+        interests_id = request.form.getlist('interests')
+
+        conn = get_db_connection()
+        with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+            temp_file.write(pfp_file.read())
+            temp_file_path = temp_file.name
+        pfp = photo_to_binary(temp_file_path)
+        os.remove(temp_file_path)
+        interests = ""
+        for intr in interests_id:
+            inter = conn.execute('SELECT Name FROM Interest WHERE Interest_ID = ?', (intr,)).fetchone()
+            interests += inter[0] + ","
+        interests = interests[:-1]
+        if pfp_file:
+            conn.execute('UPDATE User SET Profile_picture=?, Name=?, Password=?, Age=?, Interests=? WHERE User_ID=?',
+                         (pfp, username, pw, age, interests, session["User_ID"]))
+        else:
+            conn.execute('UPDATE User SET Name=?, Password=?, Age=?, Interests=? WHERE User_ID=?',
+                         (username, pw, age, interests, session["User_ID"]))
+        conn.execute('UPDATE Trainee SET Weight_kg=?, Height_m=? WHERE Trainee_ID=?',
+                     (weight, height, session["User_ID"]))
+        conn.commit()
+        conn.close()
+
+    return render_template("edit_profile_trainee.html", gen_info=gen_info, trainee_info=trainee_info,
+                           interests=all_interests)
 
 
 @app.route('/profileTraineeStats', methods=['GET', 'POST'])
@@ -202,6 +235,19 @@ def personalProfileTraineePosts():
     return render_template("personal_profile_trainee_posts.html", posts_with_comments=posts_with_comments,
                            pfp=pfp, gen_info=gen_info, trainee_info=trainee_info)
 
+
+@app.route('/profileTraineePlan', methods=['GET', 'POST'])
+def personalProfileTraineePlan():
+    conn = get_db_connection()
+    plan = conn.execute('SELECT Plan FROM Plan WHERE Trainee_ID = ?', (session["User_ID"],)).fetchone()
+    plan = ast.literal_eval(plan[0])
+    today = datetime.now().strftime("%A")[:3]
+    exercises = []
+    for exercise in plan[today]:
+        ex = conn.execute('SELECT Media, Name FROM Exercise WHERE Exercise_ID = ?', (str(exercise),)).fetchall()
+        exercises.append(ex[0])
+    conn.close()
+    return render_template("personal_profile_trainee_plan.html", exercises=exercises)
 
 @app.route('/forgotPW', methods=['GET', 'POST'])
 def forgotPW():
