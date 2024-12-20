@@ -415,44 +415,58 @@ def add_recipe():
         return redirect(url_for('login'))
 
     User_ID = str(session['User_ID'])
+    
     if request.method == 'POST':
+        # Get form data
         recipe_name = request.form.get('Recipe_Name')
         meal_type = request.form.get('Meal_Type')
         nutrition_info = request.form.get('Nutrition_Information')
-        media = request.form.get('Media')
+        media = request.files.get('Media')
         steps = request.form.get('Steps')
         ingredients = request.form.get('Ingredients')
-
-        # Validate form data
-        if not recipe_name or not meal_type or not nutrition_info or not media or not steps or not ingredients:
-            return "All fields are required!"
+        if not (recipe_name and meal_type and nutrition_info and media and steps and ingredients):
+            flash("All fields are required!", 'error')
+            return redirect(url_for('add_recipe'))
 
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
 
-            # Find the max Recipe_ID and increment it
+            # Generate a new Recipe_ID
             cursor.execute("SELECT MAX(CAST(Recipe_ID AS INTEGER)) FROM Recipe")
             max_id = cursor.fetchone()[0]
             new_recipe_id = str((max_id + 1) if max_id is not None else 1)  # Handle case where table is empty
-
             print(f"Generated new Recipe_ID: {new_recipe_id}")
+            temp_path = f"uploads/{media.filename}"
+            media.save(temp_path)
 
-            # Insert the new recipe
+            # Upload media file and get its unique identifier
+            drive_file_id = upload(temp_path, media.filename)
+            if not drive_file_id:
+                os.remove(temp_path) 
+                flash("Failed to upload media file. Please try again.", 'error')
+                return redirect(url_for('add_recipe'))
+            
+            os.remove(temp_path)
+            print(f"Uploaded media file ID: {drive_file_id}")
+
+            # Insert the new recipe details into the database
             cursor.execute("""
                 INSERT INTO Recipe (Recipe_ID, Coach_ID, Recipe_Name, Meal_Type, Nutrition_Information, Media, Steps, Ingredients)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """, (new_recipe_id, User_ID, recipe_name, meal_type, nutrition_info, media, steps, ingredients))
+            """, (new_recipe_id, User_ID, recipe_name, meal_type, nutrition_info, drive_file_id, steps, ingredients))
 
             conn.commit()
+            conn.close()
 
             print(f"New Recipe added successfully with ID: {new_recipe_id}")
+            flash(f"Recipe added successfully with ID: {new_recipe_id}!", 'success')
+            return redirect(url_for('GetRecipes'))
 
         except Exception as e:
             print(f"Error occurred while adding recipe: {str(e)}")
-            return f"An error occurred: {str(e)}. Please try again later."
-
-        return redirect(url_for('GetRecipes'))
+            flash(f"An error occurred: {str(e)}. Please try again later.", 'error')
+            return redirect(url_for('add_recipe'))
 
     return render_template('add_recipe.html')
 
@@ -525,15 +539,41 @@ def GetCoach():
 @app.route('/exercises', methods=['GET'])
 def GetExercises():
     try:
+        # Fetch exercises from SQL database
         conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM Exercise")
         Exercises_data = [dict(row) for row in cursor.fetchall()]
         conn.close()
-        # Filter out entries with None Exercise_ID
-        valid_exercises = [exercise for exercise in Exercises_data if exercise['Exercise_ID'] is not None]
+        # Authenticate with Google Drive
+        creds = authenticate()
+        service = build('drive', 'v3', credentials=creds)
 
-        return render_template('exercises.html', Exercises=valid_exercises)
+        # Fetch images from Google Drive folder
+        results = service.files().list(
+            q=f"'{MAIN_FOLDER_ID}' in parents and trashed=false",
+            fields="files(id, name, mimeType)"
+        ).execute()
+
+        files = results.get('files', [])
+        if not files:
+            print("No images found in Google Drive folder.")
+
+        # Prepare a mapping of exercise images
+        exercise_images = {}
+        for file in files:
+            # Check if the file name matches the exercise image naming convention
+            for exercise in Exercises_data:
+                exercise_id = exercise['Exercise_ID']
+                if f"exercise{exercise_id}" in file['name']:
+                    exercise_images[exercise_id] = get_file_url(file['id'])
+
+        # Combine exercise metadata with image URLs
+        for exercise in Exercises_data:
+            exercise_id = exercise['Exercise_ID']
+            exercise['Image_URL'] = exercise_images.get(exercise_id, None)
+
+        return render_template('exercises.html', Exercises=Exercises_data)
     except Exception as e:
         print(f"Error fetching exercises: {e}")
         return "Error fetching exercises", 500
@@ -579,15 +619,16 @@ def AddExercises():
     User_ID = str(session['User_ID'])
 
     if request.method == 'POST':
-        name = request.form['Name']
-        media = request.form['Media']
-        duration = request.form['Duration']
-        equipment = request.form['Equipment']
-        description = request.form['Description']
-        muscles_targeted = request.form['Muscles_Targeted']
+        # Get form data
+        name = request.form.get('Name')
+        media = request.files.get('Media')
+        duration = request.form.get('Duration')
+        equipment = request.form.get('Equipment')
+        description = request.form.get('Description')
+        muscles_targeted = request.form.get('Muscles_Targeted')
 
         # Validate form data
-        if not name or not media or not duration or not equipment or not description or not muscles_targeted:
+        if not (name and media and duration and equipment and description and muscles_targeted):
             flash("All fields are required!", 'error')
             return redirect(url_for('AddExercises'))
 
@@ -595,20 +636,33 @@ def AddExercises():
             conn = get_db_connection()
             cursor = conn.cursor()
 
-            while True:  # add a new random exercise id
+            # Generate a new random exercise ID
+            random_exercise_id = random.randint(1000, 9999)
+            cursor.execute("SELECT 1 FROM Exercise WHERE Exercise_ID = ?", (random_exercise_id,))
+            while cursor.fetchone():
                 random_exercise_id = random.randint(1000, 9999)
-                cursor.execute("SELECT 1 FROM Exercise WHERE Exercise_ID = ?", (random_exercise_id,))
-                if not cursor.fetchone():
-                    break
+            print(f"Generated Exercise ID: {random_exercise_id}")
+            temp_path = f"uploads/{media.filename}"
+            media.save(temp_path)
 
+            drive_file_id = upload(temp_path, media.filename)
+            if not drive_file_id:
+                os.remove(temp_path)  # Clean up temporary file if upload failed
+                flash("Failed to upload media file. Please try again.", 'error')
+                return redirect(url_for('AddExercises'))
+            # Clean up the temporary file
+            os.remove(temp_path)
+            print(f"Uploaded media file ID: {drive_file_id}")
+            # Insert the exercise details into the database
             cursor.execute("""
                 INSERT INTO Exercise (Exercise_ID, Coach_ID, Name, Media, Duration, Equipment, Description, Muscles_Targeted)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """, (random_exercise_id, User_ID, name, media, duration, equipment, description, muscles_targeted))
+            """, (random_exercise_id, User_ID, name, drive_file_id, duration, equipment, description, muscles_targeted))
 
             conn.commit()
             conn.close()
 
+            print(f"Exercise added successfully with ID: {random_exercise_id}!")
             flash(f"Exercise added successfully with ID: {random_exercise_id}!", 'success')
             return redirect(url_for('GetExerciseDetails', exercise_id=random_exercise_id))
 
@@ -619,6 +673,11 @@ def AddExercises():
 
     return render_template('add_exercise.html')
 
+#def add_recipe():
+
+ 
 
 if __name__ == '__main__':
     app.run(host="127.0.0.1", port=5000, debug=True)
+
+    
