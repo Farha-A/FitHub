@@ -5,9 +5,6 @@ from io import BytesIO
 import sqlite3
 import random
 from datetime import datetime
-from flask_mail import Mail, Message
-import numpy as np
-import base64
 
 # database path
 DATABASE = 'FitHub_DB.sqlite'
@@ -24,29 +21,36 @@ def get_db_connection():
     return conn
 
 
+# save image as binary data
 def photo_to_binary(img):
     with open(img, 'rb') as f:
         image_data = base64.b64encode(f.read()).decode('utf-8')
     return image_data
 
 
+# read binary image
 def serve_image(table, table_id):
     conn = get_db_connection()
-    query = f'SELECT Profile_picture FROM {table} WHERE User_ID = ?'
+    if table == "User":
+        query = f'SELECT Profile_picture FROM {table} WHERE User_ID = ?'
+    else:
+        query = f'SELECT Media FROM {table} WHERE User_ID = ?'
     image_data = conn.execute(query, (table_id,)).fetchone()
     conn.close()
-
-    # return default profile photo if user hasn't uploaded a profile picture
-    if table == "User":
-        if not image_data or not image_data[0]:
-            return 'static/default_profile.jpg'
-    # change string into base64 to be read properly
-    if isinstance(image_data[0], str):
-        image_data = base64.b64decode(image_data[0])
-        base64_image = base64.b64encode(image_data).decode('utf-8')
-        return f"data:image/jpeg;base64,{base64_image}"
-    # send image
-    return send_file(BytesIO(image_data), mimetype='image/jpg', as_attachment=False)
+    print(image_data)
+    if image_data is not None:
+        print("what")
+        # return default profile photo if user hasn't uploaded a profile picture
+        if table == "User":
+            if not image_data or not image_data[0]:
+                return 'static/default_profile.jpg'
+        # change string into base64 to be read properly
+        if isinstance(image_data[0], str):
+            image_data = base64.b64decode(image_data[0])
+            base64_image = base64.b64encode(image_data).decode('utf-8')
+            return f"data:image/jpeg;base64,{base64_image}"
+        # send image
+        return send_file(BytesIO(image_data), mimetype='image/jpg', as_attachment=False)
 
 
 # load homepage
@@ -95,6 +99,84 @@ def login():
             flash('Invalid email or password', 'danger')
 
     return render_template("login.html")
+
+
+@app.route('/personal_profile', methods=['GET', 'POST'])
+def personalProfile():
+    conn = get_db_connection()
+    role = conn.execute('SELECT Role FROM User WHERE User_ID = ?',
+                        (session["User_ID"],)).fetchone()
+    conn.close()
+    if role[0] == "Trainee":
+        return redirect(url_for("personalProfileTraineeStats"))
+    elif role[0] == "Coach":
+        return redirect(url_for("personalProfileCoach"))
+    else:
+        return redirect(url_for("home_page"))
+
+
+@app.route('/profileTraineeStats', methods=['GET', 'POST'])
+def personalProfileTraineeStats():
+    conn = get_db_connection()
+    gen_info = conn.execute('SELECT * FROM User WHERE User_ID = ?', (session["User_ID"],)).fetchone()
+    trainee_info = conn.execute('SELECT * FROM Trainee WHERE Trainee_ID = ?', (session["User_ID"],)).fetchone()
+    conn.close()
+    pfp = serve_image("User", session["User_ID"])
+    return render_template("personal_profile_trainee_stats.html", gen_info=gen_info, pfp=pfp, trainee_info=trainee_info)
+
+
+@app.route('/profileTraineePosts', methods=['GET', 'POST'])
+def personalProfileTraineePosts():
+    conn = get_db_connection()
+    gen_info = conn.execute('SELECT * FROM User WHERE User_ID = ?', (session["User_ID"],)).fetchone()
+    trainee_info = conn.execute('SELECT * FROM Trainee WHERE Trainee_ID = ?', (session["User_ID"],)).fetchone()
+    personal_posts = conn.execute('SELECT * FROM Post WHERE User_ID = ? ORDER BY Time_Stamp DESC',
+                                  (session["User_ID"],)).fetchall()
+    posts_comments = []
+    for post in personal_posts:
+        comments = conn.execute('SELECT * FROM Comment JOIN Post ON Post.Post_ID = Comment.Post_ID '
+                                'JOIN User ON User.User_ID = Comment.User_ID '
+                                'WHERE Post.Post_ID = ?', (post[0],)).fetchall()
+        posts_comments.append(comments)
+    username = conn.execute('SELECT Name FROM User WHERE User_ID = ?', (session["User_ID"],)).fetchone()
+    conn.close()
+    posts_with_comments = []
+    # print(posts_comments[0][0][1])
+    # print(personal_posts[0][0])
+    for i in range(len(personal_posts)):
+        post = personal_posts[i]
+        if posts_comments[i]:
+            comments = [
+                {'Username': comment[0][12], 'Content': comment[0][3]}
+                for comment in posts_comments
+                if comment[0][1] == post[0]
+            ]
+            posts_with_comments.append({
+                'post': {
+                    'Post_ID': post['Post_ID'],
+                    'Content': post['Content'],
+                    'Media': post['Media'],
+                    'Username': username[0],
+                    'User_ID': post['User_ID'],
+                    'Time_Stamp': post['Time_Stamp']
+                },
+                'comments': comments
+            })
+        else:
+            posts_with_comments.append({
+                'post': {
+                    'Post_ID': post['Post_ID'],
+                    'Content': post['Content'],
+                    'Media': post['Media'],
+                    'Username': post['Username'],
+                    'User_ID': post['User_ID'],
+                    'Time_Stamp': post['Time_Stamp']
+                },
+                'comments': []
+            })
+    pfp = serve_image("User", session["User_ID"])
+    return render_template("personal_profile_posts.html", posts_with_comments=posts_with_comments,
+                           pfp=pfp, gen_info=gen_info, trainee_info=trainee_info)
 
 
 @app.route('/forgotPW', methods=['GET', 'POST'])
