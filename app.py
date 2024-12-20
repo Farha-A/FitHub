@@ -47,6 +47,8 @@ def serve_image(table, table_id):
     if table == "User":
         if image_data is None or image_data[0] is None:
             return 'static/default_profile.jpg'
+    if image_data is None or image_data[0] is None:
+        return None
     # change string into base64 to be read properly
     if isinstance(image_data[0], str):
         image_data = base64.b64decode(image_data[0])
@@ -202,15 +204,16 @@ def personalProfileTraineePosts():
         post = personal_posts[i]
         if posts_comments[i]:
             comments = [
-                {'Username': comment[0][12], 'Content': comment[0][3]}
+                {'Username': comment[12], 'Content': comment[3]}
                 for comment in posts_comments[i]
-                if comment[0][1] == post[0]
+                if comment[1] == post[0]
             ]
             posts_with_comments.append({
                 'post': {
+                    'pfp': serve_image("User", session["User_ID"]),
                     'Post_ID': post['Post_ID'],
                     'Content': post['Content'],
-                    'Media': post['Media'],
+                    'Media': serve_image("Post", post['Post_ID']),
                     'Username': username[0],
                     'User_ID': post['User_ID'],
                     'Time_Stamp': post['Time_Stamp']
@@ -220,9 +223,10 @@ def personalProfileTraineePosts():
         else:
             posts_with_comments.append({
                 'post': {
+                    'pfp': serve_image("User", session["User_ID"]),
                     'Post_ID': post['Post_ID'],
                     'Content': post['Content'],
-                    'Media': post['Media'],
+                    'Media': serve_image("Post", post['Post_ID']),
                     'Username': username[0],
                     'User_ID': post['User_ID'],
                     'Time_Stamp': post['Time_Stamp']
