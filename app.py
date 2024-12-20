@@ -115,7 +115,7 @@ def personalProfile():
     if role[0] == "Trainee":
         return redirect(url_for("personalProfileTraineeStats"))
     elif role[0] == "Coach":
-        return redirect(url_for("personalProfileCoach"))
+        return redirect(url_for("personalProfileCoachInformation"))
     else:
         return redirect(url_for("home_page"))
 
@@ -254,6 +254,19 @@ def personalProfileTraineePlan():
     conn.close()
     return render_template("personal_profile_trainee_plan.html", exercises=exercises,
                            gen_info=gen_info, trainee_info=trainee_info, pfp=pfp)
+
+
+@app.route('/personalProfileCoachInformation', methods=['GET', 'POST'])
+def personalProfileCoachInformation():
+    conn = get_db_connection()
+    gen_info = conn.execute('SELECT * FROM User WHERE User_ID = ?', (session["User_ID"],)).fetchone()
+    coach_info = conn.execute('SELECT * FROM Coach WHERE Coach_ID = ?', (session["User_ID"],)).fetchone()
+    conn.close()
+    certificates = coach_info[4].split(" ")
+    print(certificates)
+    pfp = serve_image("User", session["User_ID"])
+    return render_template("personal_profile_coach_information.html", gen_info=gen_info, pfp=pfp,
+                           coach_info=coach_info, certificates=certificates)
 
 
 @app.route('/forgotPW', methods=['GET', 'POST'])
@@ -438,16 +451,10 @@ def coachSignUp():
         expYears = str(request.form['expYears']) + " years"
         expDesc = request.form['expDesc']
         gender = request.form['gender']
-        certificates = request.files['certificates']
+        certificates = request.form['certificates']
         password = request.form['password']
         interests_id = request.form.getlist('interests')
         security_answer = request.form['sec_ans']
-
-        certificates_data = []
-        for certificate in certificates:
-            with open(certificate, 'rb') as file:
-                certificate_data = file.read()
-                certificates_data.append(certificate_data)
 
         conn = get_db_connection()
         # save interests entered by their names
@@ -473,7 +480,7 @@ def coachSignUp():
             # add coach to coach table
             conn.execute('INSERT INTO Coach (Coach_ID, Verified, Description, Experience, Certificates) '
                          'VALUES (?, ?, ?, ?, ?)',
-                         (userid, verified, expDesc, expYears, certificates_data))
+                         (userid, verified, expDesc, expYears, certificates))
 
             conn.commit()
             conn.close()
@@ -484,7 +491,7 @@ def coachSignUp():
     conn = get_db_connection()
     all_interests = conn.execute('SELECT * FROM Interest').fetchall()
     conn.close()
-    return render_template("traineeSignUp.html", interests=all_interests, email_exists=email_exists,
+    return render_template("coachSignUp.html", interests=all_interests, email_exists=email_exists,
                            security_question=security_question)
 
 
