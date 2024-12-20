@@ -198,14 +198,12 @@ def personalProfileTraineePosts():
     username = conn.execute('SELECT Name FROM User WHERE User_ID = ?', (session["User_ID"],)).fetchone()
     conn.close()
     posts_with_comments = []
-    # print(posts_comments[0][0][1])
-    # print(personal_posts[0][0])
     for i in range(len(personal_posts)):
         post = personal_posts[i]
         if posts_comments[i]:
             comments = [
                 {'Username': comment[0][12], 'Content': comment[0][3]}
-                for comment in posts_comments
+                for comment in posts_comments[i]
                 if comment[0][1] == post[0]
             ]
             posts_with_comments.append({
@@ -225,7 +223,7 @@ def personalProfileTraineePosts():
                     'Post_ID': post['Post_ID'],
                     'Content': post['Content'],
                     'Media': post['Media'],
-                    'Username': post['Username'],
+                    'Username': username[0],
                     'User_ID': post['User_ID'],
                     'Time_Stamp': post['Time_Stamp']
                 },
@@ -239,15 +237,20 @@ def personalProfileTraineePosts():
 @app.route('/profileTraineePlan', methods=['GET', 'POST'])
 def personalProfileTraineePlan():
     conn = get_db_connection()
+    pfp = serve_image("User", session["User_ID"])
+    gen_info = conn.execute('SELECT * FROM User WHERE User_ID = ?', (session["User_ID"],)).fetchone()
+    trainee_info = conn.execute('SELECT * FROM Trainee WHERE Trainee_ID = ?', (session["User_ID"],)).fetchone()
     plan = conn.execute('SELECT Plan FROM Plan WHERE Trainee_ID = ?', (session["User_ID"],)).fetchone()
     plan = ast.literal_eval(plan[0])
     today = datetime.now().strftime("%A")[:3]
     exercises = []
     for exercise in plan[today]:
-        ex = conn.execute('SELECT Media, Name FROM Exercise WHERE Exercise_ID = ?', (str(exercise),)).fetchall()
+        ex = conn.execute('SELECT Media, Name, Duration, Exercise_ID FROM Exercise WHERE Exercise_ID = ?', (str(exercise),)).fetchall()
         exercises.append(ex[0])
     conn.close()
-    return render_template("personal_profile_trainee_plan.html", exercises=exercises)
+    return render_template("personal_profile_trainee_plan.html", exercises=exercises,
+                           gen_info=gen_info, trainee_info=trainee_info, pfp=pfp)
+
 
 @app.route('/forgotPW', methods=['GET', 'POST'])
 def forgotPW():
