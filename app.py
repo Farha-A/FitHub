@@ -41,20 +41,18 @@ def serve_image(table, table_id):
         query = f'SELECT Media FROM {table} WHERE {tid} = ?'
     image_data = conn.execute(query, (table_id,)).fetchone()
     conn.close()
-    print(image_data)
-    if image_data is not None:
-        print("what")
-        # return default profile photo if user hasn't uploaded a profile picture
-        if table == "User":
-            if not image_data or not image_data[0]:
-                return 'static/default_profile.jpg'
-        # change string into base64 to be read properly
-        if isinstance(image_data[0], str):
-            image_data = base64.b64decode(image_data[0])
-            base64_image = base64.b64encode(image_data).decode('utf-8')
-            return f"data:image/jpeg;base64,{base64_image}"
-        # send image
-        return send_file(BytesIO(image_data), mimetype='image/jpg', as_attachment=False)
+    print(image_data[0])
+    # return default profile photo if user hasn't uploaded a profile picture
+    if table == "User":
+        if image_data is None or image_data[0] is None:
+            return 'static/default_profile.jpg'
+    # change string into base64 to be read properly
+    if isinstance(image_data[0], str):
+        image_data = base64.b64decode(image_data[0])
+        base64_image = base64.b64encode(image_data).decode('utf-8')
+        return f"data:image/jpeg;base64,{base64_image}"
+    # send image
+    return send_file(BytesIO(image_data), mimetype='image/jpg', as_attachment=False)
 
 
 # load homepage
