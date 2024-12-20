@@ -35,6 +35,43 @@
         <div class="spinner-border text-primary" role="status"></div>
     </div>
     <!-- Spinner End -->
+<!-- Sidebar -->
+<div class="d-flex flex-column flex-shrink-0 p-3 bg-light" style="width: 280px; height: 100vh; position: fixed;">
+    <a href="/" class="d-flex align-items-center mb-3 mb-md-0 me-md-auto text-decoration-none">
+        <i class="bi bi-clipboard-plus me-2"></i>
+        <span class="fs-4">Fithub</span>
+    </a>
+    <hr>
+    <ul class="nav nav-pills flex-column mb-auto">
+        <li class="nav-item">
+            <a href="AddExercises" class="nav-link active" aria-current="page">
+                <i class="bi bi-plus-circle me-2"></i> Add Exercise
+            </a>
+        </li>
+        <li>
+            <a href="exercises" class="nav-link text-dark">
+                <i class="bi bi-list-task me-2"></i> View Exercises
+            </a>
+        </li>
+        <li>
+            <a href="recipes" class="nav-link text-dark">
+                <i class="bi bi-gear me-2"></i> Recipes
+            </a>
+        </li>
+    </ul>
+    <hr>
+    <div class="dropdown">
+        <a href="#" class="d-flex align-items-center text-dark text-decoration-none dropdown-toggle" id="dropdownUser1" data-bs-toggle="dropdown" aria-expanded="false">
+            <img src="{{ url_for('static', filename='img/user.png') }}" alt="" width="32" height="32" class="rounded-circle me-2">
+            <strong>User</strong>
+        </a>
+        <ul class="dropdown-menu text-small shadow" aria-labelledby="dropdownUser1">
+            <li><a class="dropdown-item" href="#">Profile</a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="login">Sign out</a></li>
+        </ul>
+    </div>
+</div>
 
     <!-- Add Recipe Section Start -->
     <div class="container-xxl py-5">
@@ -60,7 +97,7 @@
             {% endwith %}
 
             <!-- Recipe form -->
-            <form action="{{ url_for('add_recipe') }}" method="POST" class="bg-light p-4 rounded shadow">
+            <form action="{{ url_for('add_recipe') }}" method="POST" enctype="multipart/form-data" class="bg-light p-4 rounded shadow">
                 <div class="mb-3">
                     <label for="Recipe_Name" class="form-label">Recipe Name:</label>
                     <input type="text" class="form-control" id="Recipe_Name" name="Recipe_Name" required>
@@ -83,7 +120,7 @@
 
                 <div class="mb-3">
                     <label for="Media" class="form-label">Media (optional):</label>
-                    <input type="text" id="Media" name="Media" class="form-control">
+                    <input type="file" id="Media" name="Media" class="form-control" accept="image/*,video/*">
                 </div>
 
                 <div class="mb-3">
