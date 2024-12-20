@@ -101,7 +101,10 @@ h3 {
 
 /*input styling*/
 input {
-    padding: 10px 250px 10px 10px;
+    margin: 5px;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 10px 130px 10px 10px;
 }
 
 /*credentials input styling*/
