@@ -10,6 +10,7 @@ import numpy as np
 import base64
 import ast
 import os
+from authlib.integrations.flask_client import OAuth
 
 # database path
 DATABASE = 'FitHub_DB.sqlite'
@@ -17,6 +18,23 @@ DATABASE = 'FitHub_DB.sqlite'
 # app initialization
 app = Flask(__name__)
 app.secret_key = 'suchasecurekey'
+
+# oauth config
+app.config['SERVER_NAME'] = '127.0.0.1:5000'
+oauth = OAuth(app)
+GOOGLE_CLIENT_ID = "182040310616-60khtr7cc6mp3ji72ceut8tsivccmrui.apps.googleusercontent.com"
+GOOGLE_CLIENT_SECRET = "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"
+CONF_URL = 'https://accounts.google.com/.well-known/openid-configuration'
+
+oauth.register(
+    name='google',
+    client_id=GOOGLE_CLIENT_ID,
+    client_secret=GOOGLE_CLIENT_SECRET,
+    server_metadata_url=CONF_URL,
+    client_kwargs={
+        'scope': 'openid email profile'
+    }
+)
 
 
 # function to connect to database
@@ -79,6 +97,16 @@ def home_page():
 # get redirected to the appropriate sign-up page
 @app.route('/signUp', methods=['GET', 'POST'])
 def role_choice():
+    if request.method == 'POST':
+        print("POST request received")
+        print("Request form data:", request.form)
+        print("Request data:", request.data)
+        print("Session before update:", session)
+        session["role"] = request.form.get("role")
+        if session["role"] == "Trainee":
+            return redirect(url_for("traineeSignUp"))
+        elif session["role"] == "Coach":
+            return redirect(url_for("coachSignUp"))
     return render_template("role.html")
 
 
@@ -544,6 +572,7 @@ def forgotPW():
         elif session['fp_email']:
             if 'answer' in request.form:
                 answer = request.form['answer'].lower()
+                print(session["security_question"])
                 if session["security_question"] and answer == session["security_question"][1].lower():
                     session["show_pw_change"] = True
                 else:
@@ -605,6 +634,101 @@ def logout():
     flash('You have been logged out.', 'info')
     # redirect to login page
     return redirect(url_for('login'))
+
+
+@app.route('/google/')
+def google():
+    nonce = os.urandom(16).hex()
+    session['oauth_nonce'] = nonce
+    redirect_uri = url_for('google_auth', _external=True)
+    return oauth.google.authorize_redirect(redirect_uri, nonce=nonce, prompt="select_account")
+
+
+@app.route('/google/auth/')
+def google_auth():
+    token = oauth.google.authorize_access_token()
+
+    nonce = session.pop('oauth_nonce', None)
+    if nonce is None:
+        return redirect(url_for('google'))
+
+    user = oauth.google.parse_id_token(token, nonce=nonce)
+    auth = user.get("sub")
+    conn = get_db_connection()
+    a_user = conn.execute('SELECT * FROM User WHERE Authentication = ?', (str(auth),)).fetchone()
+    if a_user:
+        session['User_ID'] = a_user[0]
+        return redirect(url_for('redirectPerRole'))
+    session["auth"] = auth
+    session["oauth_email"] = user.get("email")
+    if session["role"] == "Trainee":
+        return redirect(url_for("oauthTraineeSignup"))
+    return redirect(url_for("oauthCoachSignup"))
+
+
+@app.route('/oauthTraineeSignup', methods=['GET', 'POST'])
+def oauthTraineeSignup():
+    questions = ["What was your dream job as a child?", "What was the name of your first stuffed animal?",
+                 "What was the color of your favorite childhood blanket?"]
+    security_question = questions[np.random.randint(0, len(questions))]
+    # save the trainee's information based on their input
+    if request.method == 'POST':
+        role = "Trainee"
+        username = request.form['username']
+        age = request.form['age']
+        weight = request.form['weight']
+        height = request.form['height']
+        gender = request.form['gender']
+        exercise = request.form['exercise']
+        bmi = round(int(weight) / (float(height) ** 2), 2)
+        interests_id = request.form.getlist('interests')
+        security_answer = request.form['sec_ans']
+
+        conn = get_db_connection()
+        # save interests entered by their names
+        interests = ""
+        for intr in interests_id:
+            inter = conn.execute('SELECT Name FROM Interest WHERE Interest_ID = ?', (intr,)).fetchone()
+            interests += inter[0] + ","
+        interests = interests[:-1]
+        # calculate new userid
+        userid_count = conn.execute('SELECT COUNT(*) FROM User').fetchone()
+        userid = str(userid_count[0] + 1)
+        sec_qa = security_question + "," + security_answer
+        # add trainee to user table
+        conn.execute('INSERT INTO User (User_ID, Name, Age, Gender, Authentication, '
+                     'Role, Interests, Security_Question) '
+                     'VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+                     (userid, username, age, gender, session["auth"], role, interests, sec_qa))
+
+        # add trainee to trainee table
+        conn.execute('INSERT INTO Trainee (Trainee_ID, Weight_kg, Height_m, BMI, Exercise_Level) '
+                     'VALUES (?, ?, ?, ?, ?)',
+                     (userid, weight, height, bmi, exercise))
+
+        # calculate new planid
+        planid_count = conn.execute('SELECT COUNT(*) FROM Plan').fetchone()
+        planid = str(planid_count[0] + 1)
+
+        # add basic plan based on gender
+        if gender == "Female":
+            init_plan = conn.execute('SELECT Plan FROM Plan WHERE Trainee_ID = ?', ("2",)).fetchone()
+            conn.execute('INSERT INTO Plan (Plan_ID, Trainee_ID, Plan) VALUES (?, ?, ?)',
+                         (planid, userid, init_plan[0]))
+        else:
+            init_plan = conn.execute('SELECT Plan FROM Plan WHERE Trainee_ID = ?', ("38",)).fetchone()
+            print(init_plan)
+            conn.execute('INSERT INTO Plan (Plan_ID, Trainee_ID, Plan) VALUES (?, ?, ?)',
+                         (planid, userid, init_plan[0]))
+        conn.commit()
+        conn.close()
+        session["auth"] = None
+        # return user to login page
+        return redirect(url_for('login'))
+    conn = get_db_connection()
+    all_interests = conn.execute('SELECT * FROM Interest').fetchall()
+    conn.close()
+    return render_template("oauthTraineeSignup.html", security_question=security_question, interests=all_interests)
 
 
 # trainee sign-up
@@ -743,6 +867,59 @@ def coachSignUp():
                            security_question=security_question)
 
 
+@app.route('/oauthCoachSignup', methods=['GET', 'POST'])
+def oauthCoachSignup():
+    email_exists = False
+    questions = ["What was your dream job as a child?", "What was the name of your first stuffed animal?",
+                 "What was the color of your favorite childhood blanket?"]
+    security_question = questions[np.random.randint(0, len(questions))]
+    # save the coach's information based on their input
+    if request.method == 'POST':
+        role = "Coach"
+        verified = "FALSE"
+        username = request.form['username']
+        age = request.form['age']
+        expYears = str(request.form['expYears']) + " years"
+        expDesc = request.form['expDesc']
+        gender = request.form['gender']
+        certificates = request.form['certificates']
+        interests_id = request.form.getlist('interests')
+        security_answer = request.form['sec_ans']
+
+        conn = get_db_connection()
+        # save interests entered by their names
+        interests = ""
+        for intr in interests_id:
+            inter = conn.execute('SELECT Name FROM Interest WHERE Interest_ID = ?', (intr,)).fetchone()
+            interests += inter[0] + ","
+        interests = interests[:-1]
+        # calculate new userid
+        userid_count = conn.execute('SELECT COUNT(*) FROM User').fetchone()
+        userid = str(userid_count[0] + 1)
+
+        sec_qa = security_question + "," + security_answer
+        # add coach to user table
+        conn.execute('INSERT INTO User (User_ID, Name, Age, Gender, Email, '
+                     'Role, Interests, Security_Question, Authentication) '
+                     'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                     (userid, username, age, gender, session["oauth_email"], role, interests, sec_qa, session["auth"]))
+        session["oauth_email"] = None
+        # add coach to coach table
+        conn.execute('INSERT INTO Coach (Coach_ID, Verified, Description, Experience, Certificates) '
+                     'VALUES (?, ?, ?, ?, ?)',
+                     (userid, verified, expDesc, expYears, certificates))
+
+        conn.commit()
+        conn.close()
+        # return user to login page
+        return redirect(url_for('login'))
+    # get all interests from database to show in form
+    conn = get_db_connection()
+    all_interests = conn.execute('SELECT * FROM Interest').fetchall()
+    conn.close()
+    return render_template("oauthCoachSignUp.html", interests=all_interests, security_question=security_question)
+
+
 # admin page
 @app.route('/admin', methods=["GET", "POST"])
 def unverifiedCoaches():
@@ -750,8 +927,14 @@ def unverifiedCoaches():
     # get all unverified coaches
     unverified_Coaches = conn.execute('SELECT * FROM Coach JOIN User ON User_ID=Coach_ID '
                                       'WHERE Verified = "FALSE"').fetchall()
+    certificates = {}
+    for coach in unverified_Coaches:
+        if coach[4]:
+            certificates[coach[0]] = (coach[4].split(" "))
+        else:
+            certificates[coach[0]] = []
     conn.close()
-    return render_template("verifyCoaches.html", coaches=unverified_Coaches)
+    return render_template("verifyCoaches.html", coaches=unverified_Coaches, certificates=certificates)
 
 
 # logic for coach verification
@@ -779,6 +962,9 @@ def verifyCoach():
     return redirect(url_for('unverifiedCoaches'))
 
 
+
+
+
 # logic for coach denial
 @app.route('/deny_coach', methods=["GET", "POST"])
 def denyCoach():
@@ -793,12 +979,12 @@ def denyCoach():
     conn.close()
     app.config['MAIL_SERVER'] = 'smtp.gmail.com'
     app.config['MAIL_PORT'] = 465
-    app.config['MAIL_USERNAME'] = '******'
-    app.config['MAIL_PASSWORD'] = '******'
+    app.config['MAIL_USERNAME'] = co_email
+    app.config['MAIL_PASSWORD'] = co_pw
     app.config['MAIL_USE_TLS'] = False
     app.config['MAIL_USE_SSL'] = True
     mail = Mail(app)
-    msg = Message('FitHub Access', sender='******', recipients=[coach_mail])
+    msg = Message('FitHub Access', sender=co_email, recipients=[coach_mail])
     msg.body = "Unfortunately, you have been denied access to FitHub. Work on your experiences and try again!"
     mail.send(msg)
     # return to admin page
