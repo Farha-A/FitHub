@@ -2,6 +2,8 @@
 from flask import Flask, render_template, request, session, flash, redirect, url_for
 import sqlite3
 import random
+from datetime import datetime
+
 
 # database path
 DATABASE = 'FitHub_DB.sqlite'
@@ -405,9 +407,6 @@ def add_comment(post_id):
 
 
 
-
-
-
 #Coach can add new recipes
 @app.route('/add_recipe', methods=['GET', 'POST'])
 def add_recipe():
@@ -536,69 +535,70 @@ def GetCoach():
 
 
 #show exercises for users
+import base64
+
 @app.route('/exercises', methods=['GET'])
 def GetExercises():
     try:
-        # Fetch exercises from SQL database
         conn = get_db_connection()
+        conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM Exercise")
-        Exercises_data = [dict(row) for row in cursor.fetchall()]
+        cursor.execute("SELECT Exercise_ID, Name, Media, Duration, Equipment, Muscles_Targeted FROM Exercise")
+        
+        exercises = cursor.fetchall()
         conn.close()
-        # Authenticate with Google Drive
-        creds = authenticate()
-        service = build('drive', 'v3', credentials=creds)
 
-        # Fetch images from Google Drive folder
-        results = service.files().list(
-            q=f"'{MAIN_FOLDER_ID}' in parents and trashed=false",
-            fields="files(id, name, mimeType)"
-        ).execute()
+        # Convert binary media to Base64 string
+        exercises_data = []
+        for exercise in exercises:
+            media_base64 = None
+            if exercise["Media"]:
+                media_base64 = base64.b64encode(exercise["Media"]).decode('utf-8')
+                media_base64 = f"data:image/jpeg;base64,{media_base64}"  # Assuming JPEG format
 
-        files = results.get('files', [])
-        if not files:
-            print("No images found in Google Drive folder.")
+            exercises_data.append({
+                "Exercise_ID": exercise["Exercise_ID"],
+                "Name": exercise["Name"],
+                "Media": media_base64,
+                "Duration": exercise["Duration"],
+                "Equipment": exercise["Equipment"],
+                "Muscles_Targeted": exercise["Muscles_Targeted"]
+            })
 
-        # Prepare a mapping of exercise images
-        exercise_images = {}
-        for file in files:
-            # Check if the file name matches the exercise image naming convention
-            for exercise in Exercises_data:
-                exercise_id = exercise['Exercise_ID']
-                if f"exercise{exercise_id}" in file['name']:
-                    exercise_images[exercise_id] = get_file_url(file['id'])
-
-        # Combine exercise metadata with image URLs
-        for exercise in Exercises_data:
-            exercise_id = exercise['Exercise_ID']
-            exercise['Image_URL'] = exercise_images.get(exercise_id, None)
-
-        return render_template('exercises.html', Exercises=Exercises_data)
+        return render_template('exercises.html', Exercises=exercises_data)
     except Exception as e:
         print(f"Error fetching exercises: {e}")
         return "Error fetching exercises", 500
 
-
-#Show more details for user about the clicked exercises
+import base64
 @app.route('/exercise/<int:exercise_id>', methods=['GET'])
 def GetExerciseDetails(exercise_id):
-    print(f"Received exercise_id: {exercise_id}")
+    import base64
+
     conn = get_db_connection()
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
+
     query = """
-        SELECT Exercise_ID, Coach_ID, Name, Media, Duration,Equipment,Description,Muscles_Targeted
+        SELECT Exercise_ID, Coach_ID, Name, Media, Duration, Description, Equipment, Muscles_Targeted
         FROM Exercise
         WHERE CAST(Exercise_ID AS TEXT) = ?
     """
     cursor.execute(query, (str(exercise_id),))
     result = cursor.fetchone()
+
     if result:
+        media_base64 = None
+        if result["Media"]:
+            media_base64 = base64.b64encode(result["Media"]).decode('utf-8')
+            media_base64 = f"data:image/jpeg;base64,{media_base64}"  # Assuming JPEG format
+            print("Base64 Encoded Media:", media_base64[:100])  # Log the first 100 chars of the Base64 string
+        
         exercise_details = {
             "Exercise_ID": result["Exercise_ID"],
             "Coach_ID": result["Coach_ID"],
             "Name": result["Name"],
-            "Media": result["Media"],
+            "Media": media_base64,
             "Duration": result["Duration"],
             "Description": result["Description"],
             "Equipment": result["Equipment"],
@@ -606,9 +606,7 @@ def GetExerciseDetails(exercise_id):
         }
         return render_template('exercises_detailed.html', exercise=exercise_details)
     else:
-        print("No exercise found with this ID.")
         return "Exercise not found", 404
-
 
 #Coach can add new exercises
 @app.route('/add_exercises', methods=['GET', 'POST'])
@@ -673,9 +671,189 @@ def AddExercises():
 
     return render_template('add_exercise.html')
 
-#def add_recipe():
 
- 
+@app.route('/add_recipe_to_trainee', methods=['POST'])
+def add_recipe_to_trainee():
+    if 'User_ID' not in session:
+        flash("You need to be logged in to perform this action.", "danger")
+        return redirect(url_for('login'))
+    user_id = session['User_ID']
+    recipe_id = request.form.get('recipe_id')
+    conn = get_db_connection()
+
+    try:
+        # Verify if the user is a trainee
+        trainee = conn.execute('SELECT * FROM Trainee WHERE Trainee_ID = ?', (user_id,)).fetchone()
+        if not trainee:
+            flash("You are not authorized to add recipes.", "danger")
+            return redirect(url_for('GetRecipes'))
+
+        # Fetch recipe's nutritional information
+        recipe = conn.execute('SELECT Nutrition_Information FROM Recipe WHERE Recipe_ID = ?', (recipe_id,)).fetchone()
+        if not recipe:
+            flash("Recipe not found.", "danger")
+            return redirect(url_for('GetRecipes'))
+
+        # Parse nutritional information
+        nutrition_parts = {
+            item.split(':')[0].strip(): float(item.split(':')[1].strip().replace('g', '').strip())
+            for item in recipe['Nutrition_Information'].split(',')
+        }
+
+        calories = nutrition_parts.get('Calories', 0)
+        fats = nutrition_parts.get('Fat', 0)
+        carbs = nutrition_parts.get('Carbs', 0)
+        protein = nutrition_parts.get('Protein', 0)
+
+        # Get today's date (without the time)
+        today_date = datetime.now().strftime("%Y-%m-%d")
+
+        # Check if an entry already exists for the trainee for today's date in Trainee_Recipes
+        existing_entry = conn.execute("""
+            SELECT 
+                IFNULL(Trainee_Calories, 0) AS Trainee_Calories,
+                IFNULL(Trainee_Fat, 0) AS Trainee_Fat,
+                IFNULL(Trainee_Carbs, 0) AS Trainee_Carbs,
+                IFNULL(Trainee_Protein, 0) AS Trainee_Protein
+            FROM Trainee_Recipes
+            WHERE Trainee_ID = ? AND DATE(Timestamp) = ?
+        """, (user_id, today_date)).fetchone()
+
+        if existing_entry:
+            # Sum the existing values with the new ones
+            updated_calories = existing_entry['Trainee_Calories'] + calories
+            updated_fats = existing_entry['Trainee_Fat'] + fats
+            updated_carbs = existing_entry['Trainee_Carbs'] + carbs
+            updated_protein = existing_entry['Trainee_Protein'] + protein
+
+            # Update the record for today's date
+            conn.execute("""
+                UPDATE Trainee_Recipes
+                SET Trainee_Calories = ?, Trainee_Fat = ?, Trainee_Carbs = ?, Trainee_Protein = ?
+                WHERE Trainee_ID = ? AND DATE(Timestamp) = ?
+            """, (updated_calories, updated_fats, updated_carbs, updated_protein, user_id, today_date))
+        else:
+            # Insert a new record for today's date
+            conn.execute("""
+                INSERT INTO Trainee_Recipes (Trainee_ID, Timestamp, Trainee_Calories, Trainee_Fat, Trainee_Carbs, Trainee_Protein)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (user_id, today_date, calories, fats, carbs, protein))
+
+        conn.commit()
+        flash("Recipe added to your daily totals successfully!", "success")
+    except Exception as e:
+        flash(f"An error occurred: {str(e)}", "danger")
+    finally:
+        conn.close()
+
+    return redirect(url_for('GetRecipeDetails', recipe_id=recipe_id))
+
+
+@app.route('/add_exercise_to_trainee', methods=['POST'])
+def add_exercise_to_trainee():
+    if 'User_ID' not in session:
+        flash("You need to be logged in to perform this action.", "danger")
+        return redirect(url_for('login'))
+
+    user_id = session['User_ID']
+    exercise_id = request.form.get('exercise_id')
+
+    conn = get_db_connection()
+
+    try:
+        # Verify the user is a trainee
+        trainee = conn.execute('SELECT * FROM Trainee WHERE Trainee_ID = ?', (user_id,)).fetchone()
+        if not trainee:
+            flash("You are not authorized to add exercises.", "danger")
+            return redirect(url_for('GetExercises'))
+
+        # Verify the exercise exists
+        exercise = conn.execute('SELECT * FROM Exercise WHERE Exercise_ID = ?', (exercise_id,)).fetchone()
+        if not exercise:
+            flash("Exercise not found.", "danger")
+            return redirect(url_for('GetExercises'))
+
+        today_date = datetime.now().strftime("%Y-%m-%d")
+
+        # Check if the exercise already exists for the trainee on the current date
+        existing_entry = conn.execute(
+            """SELECT * FROM Trainee_Exercises 
+               WHERE Trainee_ID = ? AND Exercise_ID = ? AND DATE(Timestamp) = ?""",
+            (user_id, exercise_id, today_date)
+        ).fetchone()
+
+        if existing_entry:
+            flash("You have already added this exercise for today.", "warning")
+        else:
+            # Insert a new entry
+            conn.execute(
+                """INSERT INTO Trainee_Exercises (Trainee_ID, Timestamp, Trainee_Calories_Burned, Exercise_ID)
+                   VALUES (?, ?, ?, ?)""",
+                (user_id, today_date, 0, exercise_id)  # Set Trainee_Calories_Burned to 0 or calculate if needed
+            )
+            conn.commit()
+            flash("Exercise added successfully!", "success")
+    except Exception as e:
+        flash(f"An error occurred: {str(e)}", "danger")
+    finally:
+        conn.close()
+
+    return redirect(url_for('GetExerciseDetails', exercise_id=exercise_id))
+
+@app.route('/notifications')
+def view_notifications():
+    if 'User_ID' not in session:
+        flash("You need to be logged in to view notifications.", "danger")
+        return redirect(url_for('login'))
+
+    user_id = session['User_ID']
+    conn = get_db_connection()
+    notifications = []
+    try:
+       
+        today_date = datetime.now().strftime("%Y-%m-%d")  
+        print(f"Today's date: {today_date}")
+
+        # Check if the trainee has logged any exercises today
+        has_exercise_today = conn.execute(
+            "SELECT * FROM Trainee_Exercise WHERE Trainee_ID = ? AND Timestamp = ?",
+            (user_id, today_date)
+        ).fetchone()
+        print(f"Exercise records found for today: {has_exercise_today}")
+
+        # Check if the trainee has logged any recipes today
+        has_meals_today = conn.execute(
+            "SELECT * FROM Trainee_Recipes WHERE Trainee_ID = ? AND Timestamp = ?",
+            (user_id, today_date)
+        ).fetchone()
+        print(f"Recipe records found for today: {has_meals_today}")
+
+        # Add notifications if no data is found
+        if not has_exercise_today:
+            notifications.append({
+                'Message': "Don't forget to perform your exercise today!",
+                'Timestamp': today_date
+            })
+
+        if not has_meals_today:
+            notifications.append({
+                'Message': "Don't forget to log your meals today!",
+                'Timestamp': today_date
+            })
+
+    except Exception as e:
+        flash(f"An error occurred: {str(e)}", "danger")
+    finally:
+        conn.close()
+
+    if not notifications:
+        notifications.append({
+            'Message': "No notifications for today. Keep up the good work!",
+            'Timestamp': today_date
+        })
+
+    return render_template('notification.html', notifications=notifications)
+
 
 if __name__ == '__main__':
     app.run(host="127.0.0.1", port=5000, debug=True)
