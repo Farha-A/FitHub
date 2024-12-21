@@ -36,6 +36,9 @@ oauth.register(
     }
 )
 
+co_email = "s-farha.shady@zewailcity.edu.eg"
+co_pw = "7ThuKc?C"
+
 
 # function to connect to database
 def get_db_connection():
@@ -74,6 +77,19 @@ def serve_image(table, table_id):
         return f"data:image/jpeg;base64,{base64_image}"
     # send image
     return send_file(BytesIO(image_data), mimetype='image/jpg', as_attachment=False)
+
+
+def send_email(rcvr, subject, content):
+    app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+    app.config['MAIL_PORT'] = 465
+    app.config['MAIL_USERNAME'] = co_email
+    app.config['MAIL_PASSWORD'] = co_pw
+    app.config['MAIL_USE_TLS'] = False
+    app.config['MAIL_USE_SSL'] = True
+    mail = Mail(app)
+    msg = Message(subject, sender=co_email, recipients=[rcvr])
+    msg.body = content
+    mail.send(msg)
 
 
 # load homepage
@@ -567,6 +583,8 @@ def forgotPW():
             session.pop('fp_email', None)
             session.pop('security_question', None)
             session.pop('show_pw_change', None)
+            send_email(session["fp_email"], "Password Reset", "Your password has been reset, "
+                                                              "make sure to save it this time!")
             return redirect(url_for("login"))
 
         elif session['fp_email']:
@@ -948,21 +966,9 @@ def verifyCoach():
     conn.execute('UPDATE Coach SET Verified = "TRUE" WHERE Coach_ID=?', (coachID,))
     conn.commit()
     conn.close()
-    app.config['MAIL_SERVER'] = 'smtp.gmail.com'
-    app.config['MAIL_PORT'] = 465
-    app.config['MAIL_USERNAME'] = '******'
-    app.config['MAIL_PASSWORD'] = '******'
-    app.config['MAIL_USE_TLS'] = False
-    app.config['MAIL_USE_SSL'] = True
-    mail = Mail(app)
-    msg = Message('FitHub Access', sender='******', recipients=[coach_mail])
-    msg.body = "Congratulation! You got verified, you can now access our site as a coach :D"
-    mail.send(msg)
+    send_email(coach_mail, "FitHub Access", "Congratulation! You got verified, you can now access our site as a coach :D")
     # return to admin page
     return redirect(url_for('unverifiedCoaches'))
-
-
-
 
 
 # logic for coach denial
@@ -977,16 +983,8 @@ def denyCoach():
     conn.execute('DELETE FROM User WHERE User_ID=?', (coachID,))
     conn.commit()
     conn.close()
-    app.config['MAIL_SERVER'] = 'smtp.gmail.com'
-    app.config['MAIL_PORT'] = 465
-    app.config['MAIL_USERNAME'] = co_email
-    app.config['MAIL_PASSWORD'] = co_pw
-    app.config['MAIL_USE_TLS'] = False
-    app.config['MAIL_USE_SSL'] = True
-    mail = Mail(app)
-    msg = Message('FitHub Access', sender=co_email, recipients=[coach_mail])
-    msg.body = "Unfortunately, you have been denied access to FitHub. Work on your experiences and try again!"
-    mail.send(msg)
+    send_email(coach_mail, "FitHub Access", "Unfortunately, you have been denied access to FitHub. "
+                                            "Work on your experiences and try again!")
     # return to admin page
     return redirect(url_for('unverifiedCoaches'))
 
