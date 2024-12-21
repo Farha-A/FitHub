@@ -2,9 +2,6 @@
 from flask import Flask, render_template, request, session, flash, redirect, url_for, send_file
 import io
 from io import BytesIO
-from flask import Flask, render_template, request, session, flash, redirect, url_for, send_file
-import io
-from io import BytesIO
 import sqlite3
 import random
 from datetime import datetime
@@ -13,6 +10,8 @@ import numpy as np
 import base64
 import tempfile
 import os
+from werkzeug.utils import secure_filename
+import mimetypes
 
 # database path
 DATABASE = 'FitHub_DB.sqlite'
@@ -463,17 +462,83 @@ def denyCoach():
     # return to admin page
     return redirect(url_for('unverifiedCoaches'))
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # function to get user information
 def get_user(User_ID):
-    conn = get_db_connection()  # connect to the database
-    user = conn.execute('SELECT * FROM User WHERE User_ID = ?', (User_ID,)).fetchone()  # fetch user details
+    conn = get_db_connection()  # connect to database
+    user = conn.execute('SELECT * FROM User WHERE User_ID = ?', (User_ID,)).fetchone()  # fetch user info
     return user, conn
 
 # function to get all interests
 def get_interests(conn):
-    return conn.execute('SELECT * FROM Interest').fetchall()  # fetch all available interests
+    return conn.execute('SELECT * FROM Interest').fetchall()  # fetch all interests
 
-# function to share a post
+# function to handle post submission
 def share_post(conn, post_content, post_media, selected_tags, user):
     postid_count = conn.execute('SELECT COUNT(*) FROM Post').fetchone()
     postid = postid_count[0] + 1
@@ -500,6 +565,7 @@ def share_post(conn, post_content, post_media, selected_tags, user):
         (postid, user['User_ID'], post_content, current_time, media_data, tags_str)
     )
     conn.commit()
+    
 
 # function to get user interests
 def get_user_interests(user):
@@ -508,7 +574,7 @@ def get_user_interests(user):
 # function to fetch posts by interest
 def fetch_posts_by_interest(conn, user_interests):
     if user_interests:
-        placeholders = ', '.join(['?'] * len(user_interests))  # generate placeholders for query
+        placeholders = ', '.join(['?'] * len(user_interests))  # placeholders for query
         return conn.execute(
             f'''SELECT Post.*, User.Name AS Username 
                 FROM Post 
@@ -531,9 +597,9 @@ def fetch_remaining_posts(conn, user_interests):
                FROM Post 
                JOIN User ON Post.User_ID = User.User_ID
                WHERE Post.Post_ID NOT IN (
-                   SELECT Post.Post_ID
-                   FROM Post
-                   JOIN Interest
+                   SELECT Post.Post_ID 
+                   FROM Post 
+                   JOIN Interest 
                    ON Post.Tags LIKE '%' || Interest.Interest_ID || '%'
                    WHERE Interest.Name IN ({}))
                ORDER BY Post.Time_Stamp DESC'''.format(', '.join(['?'] * len(user_interests))),
@@ -577,19 +643,19 @@ def combine_posts_and_comments(all_posts, comments_with_usernames):
 # route to display and create posts
 @app.route('/posts', methods=['GET', 'POST'])
 def posts():
-    # check if user is logged in
+    # check if a user is logged in
     if 'User_ID' in session:
         User_ID = session['User_ID']  # get user id from session
 
-        # get user info and interests
+        # Get user info and interests
         user, conn = get_user(User_ID)
         all_interests = get_interests(conn)
 
         # handle post submission
         if request.method == 'POST':
             post_content = request.form['content']  # get post content
-            post_media = request.form.get('media')  # get post media (to be handled)
-            selected_tags = request.form.getlist('tags')  # get selected tags
+            post_media = request.files['media']  # get post media (to be handled)
+            selected_tags = request.form.getlist('tags')  # get selected tags as a list
             share_post(conn, post_content, post_media, selected_tags, user)
 
         # get user interests and posts
@@ -597,34 +663,33 @@ def posts():
         posts_by_interest = fetch_posts_by_interest(conn, user_interests)
         remaining_posts = fetch_remaining_posts(conn, user_interests)
 
-        # combine posts by timestamp
+        # combine and sort all posts by timestamp
         all_posts = sorted(posts_by_interest + remaining_posts, key=lambda x: x['Time_Stamp'], reverse=True)
 
         # fetch all comments with usernames
         comments_with_usernames = fetch_comments_with_usernames(conn)
 
-        # combine posts with comments
+        # combine posts with their respective comments
         posts_with_comments = combine_posts_and_comments(all_posts, comments_with_usernames)
 
         conn.close()  # close database connection
         # render posts page with user, posts, and interests
-        return render_template("posts.html", user=user, posts_with_comments=posts_with_comments,
-                               interests=all_interests)
+        return render_template("posts.html", user=user, posts_with_comments=posts_with_comments, interests=all_interests)
 
-    # redirect to login page if user is not logged in
+    # redirect to login page if no user is logged in
     return redirect(url_for('login'))
 
 # route to add a comment to a post
 @app.route('/add_comment/<int:post_id>', methods=['POST'])
 def add_comment(post_id):
-    # check if user is logged in
+    # check if a user is logged in
     if 'User_ID' in session:
         User_ID = session['User_ID']  # get user id from session
         conn = get_db_connection()  # connect to database
 
         # calculate new comment id
         commentid_count = conn.execute('SELECT COUNT(*) FROM Comment').fetchone()
-        commentid = commentid_count[0] + 1  # generate unique comment id
+        commentid = commentid_count[0] + 1  # increment comment count for unique id
 
         # get comment content from form
         comment_content = request.form['comment_content']
@@ -643,8 +708,182 @@ def add_comment(post_id):
         # redirect back to posts page
         return redirect(url_for('posts'))
 
-    # redirect to login page if user is not logged in
+    # redirect to login page if no user is logged in
     return redirect(url_for('login'))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# route to display chats for current user or specific chat
+@app.route('/chats', methods=['GET', 'POST'])
+def view_chats():
+    # redirect to login if not logged in
+    if 'User_ID' not in session:
+        return redirect(url_for('login'))
+
+    # get current user ID from session
+    current_user_id = session['User_ID']
+    
+    # connect to database
+    conn = get_db_connection()
+
+    # fetch chats for current user
+    chats = conn.execute('''
+        SELECT Chat.Chat_ID, 
+               CASE 
+                   WHEN Chat.User1_ID = ? THEN Chat.User2_ID
+                   ELSE Chat.User1_ID
+               END AS Other_User_ID,
+               (SELECT Name FROM User WHERE User.User_ID = 
+                   CASE 
+                       WHEN Chat.User1_ID = ? THEN Chat.User2_ID
+                       ELSE Chat.User1_ID
+                   END) AS Other_User_Name
+        FROM Chat
+        WHERE Chat.User1_ID = ? OR Chat.User2_ID = ?
+        ORDER BY (SELECT MAX(Time_Stamp) FROM Message WHERE Message.Chat_ID = Chat.Chat_ID) DESC
+    ''', (current_user_id, current_user_id, current_user_id, current_user_id)).fetchall()
+
+    # get selected chat ID from URL
+    selected_chat_id = request.args.get('chat_id')
+    selected_chat = None
+    messages = []
+
+    # if chat selected, fetch messages
+    if selected_chat_id:
+        selected_chat = next((chat for chat in chats if str(chat['Chat_ID']) == selected_chat_id), None)
+        if selected_chat:
+            # fetch messages for selected chat
+            messages = conn.execute('''
+                SELECT Message.Content, Message.Sender_ID, Message.Time_Stamp, User.Name
+                FROM Message
+                JOIN User ON Message.Sender_ID = User.User_ID
+                WHERE Message.Chat_ID = ?
+                ORDER BY Message.Time_Stamp ASC
+            ''', (selected_chat_id,)).fetchall()
+        else:
+            # show error if chat invalid
+            flash('Invalid chat selected.', 'danger')
+
+    # close database connection
+    conn.close()
+    
+    # render chat page
+    return render_template('chat.html', chats=chats, selected_chat=selected_chat, messages=messages, current_user_id=current_user_id)
+
+# route to handle sending new message
+@app.route('/send_message', methods=['POST'])
+def send_message():
+    # redirect to login if not logged in
+    if 'User_ID' not in session:
+        return redirect(url_for('login'))
+
+    # get current user ID from session
+    current_user_id = session['User_ID']
+    
+    # get chat ID and message content from form
+    chat_id = request.form.get('chat_id')
+    message_content = request.form.get('message_content')
+
+    # log chat ID and message content for debugging
+    print(f"Chat ID: {chat_id}, Message Content: {message_content}")
+
+    # show error if chat ID or message content missing
+    if not chat_id or not message_content:
+        flash('Chat ID and message content are required.', 'error')
+        return redirect(url_for('view_chats', chat_id=chat_id))
+
+    try:
+        # connect to database
+        conn = get_db_connection()
+        
+        # calculate new message ID
+        messegeid_count = conn.execute('SELECT COUNT(*) FROM Message').fetchone()
+        new_message_id = messegeid_count[0] + 1  
+
+        # insert message into database
+        conn.execute('''
+            INSERT INTO Message (Message_ID, Chat_ID, Sender_ID, Content, Time_Stamp)
+            VALUES (? ,?, ?, ?, datetime('now'))
+        ''', (new_message_id, chat_id, current_user_id, message_content))
+        
+        # commit changes and close connection
+        conn.commit()
+        conn.close()
+
+        # show success message
+        flash('Message sent successfully!', 'success')
+    except Exception as e:
+        # rollback on error and close connection
+        conn.rollback()
+        conn.close()
+        
+        # show error message
+        flash(f'Failed to send message: {str(e)}', 'error')
+
+    # redirect to chat view page
+    return redirect(url_for('view_chats', chat_id=chat_id))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 #Coach can add new recipes
 @app.route('/add_recipe', methods=['GET', 'POST'])
@@ -910,14 +1149,7 @@ def AddExercises():
             print(f"Error occurred while adding exercise: {str(e)}")
             flash(f"An error occurred: {str(e)}. Please try again later.", 'error')
             return redirect(url_for('AddExercises'))
-
     return render_template('add_exercise.html')
-
-#def add_recipe():
-
- 
 
 if __name__ == '__main__':
     app.run(host="127.0.0.1", port=5000, debug=True)
-
-    
