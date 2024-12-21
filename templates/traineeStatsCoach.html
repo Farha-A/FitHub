@@ -40,19 +40,53 @@
 
 <div class="content">
     <p>
-        BMI: {{ trainee_info[4] }}<br>
-        Weight: {{ trainee_info[2] }} KG<br>
+    <div class="title">
+        BMI:
+    </div>
+    {{ trainee_info[3] }}<br>
+    <div class="title">
+        Weight:
+    </div>
+    {{ trainee_info[1] }} KG<br>
+    <div class="title">
         Nutrition information for the day:<br>
-        Calories consumed: {{ nutrition[0] }}<br>
-        Carbs consumed: {{ nutrition[1] }}<br>
-        Protein consumed: {{ nutrition[2] }}<br>
-        Fat consumed: {{ nutrition[3] }}<br>
-        Total exercise time: {{ workout_time }}<br>
-        Exercises done: {% for exercise in exercises %}
-        <img src="{{ exercise[0] }}" alt="img"> {{ exercise[1] }}<br>
-    {% endfor %}
-    </p>
-
+    </div>
+    {% if nutrition_flag %}
+        Calories consumed: {{ nutrition[3] }}<br>
+        Protein consumed: {{ nutrition[5] }}<br>
+        Carbs consumed: {{ nutrition[4] }}<br>
+        Fat consumed: {{ nutrition[2] }}<br>
+    {% endif %}
+    {% if not nutrition_flag %}
+        No nutrition information yet, bet you're starving!
+    {% endif %}
+    <div class="exercising">
+        <div class="time">
+            <div class="title">
+                Total exercise time:
+            </div>
+            <div id="workoutTime" class="mini-time">{{ workout_time }} hours</div>
+            <div class="exercise_time_btn">
+                <button type="submit" id="openModal">Add Exercise Time</button>
+            </div>
+        </div>
+        <div class="title">
+            Exercises done: <br>
+        </div>
+        <div class="exercise">
+            {% if exercise_flag %}
+                {% for exercise in exercises %}
+                    <div class="uno-exercise">
+                        <img src="{{ exercise[1] }}" alt="img"> {{ exercise[0] }}<br>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        </div>
+        {% if not exercise_flag %}
+            No exercises done yet, get up & moving!
+        {% endif %}
+        </p>
+    </div>
 </div>
 </body>
 </html>

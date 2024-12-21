@@ -75,6 +75,9 @@ def serve_image(table, table_id):
         image_data = base64.b64decode(image_data[0])
         base64_image = base64.b64encode(image_data).decode('utf-8')
         return f"data:image/jpeg;base64,{base64_image}"
+    if table == "Exercise":
+        base64_image = base64.b64encode(image_data[0]).decode('utf-8')
+        return f"data:image/jpeg;base64,{base64_image}"
     # send image
     return send_file(BytesIO(image_data), mimetype='image/jpg', as_attachment=False)
 
@@ -227,8 +230,9 @@ def personalProfileTraineeStats():
         exercise_flag = True
         exercises_id = exercises_list[0][1].split(",")
         for eid in exercises_id:
-            e = conn.execute('SELECT Name, Media, Duration FROM Exercise WHERE Exercise_ID = ?', (eid,)).fetchall()
-            exercises.append(e[0])
+            photo = serve_image("Exercise", eid)
+            e = conn.execute('SELECT Name, Duration FROM Exercise WHERE Exercise_ID = ?', (eid,)).fetchall()
+            exercises.append([e[0][0], photo, e[0][1]])
         for exercise in exercises:
             workout_time += int(exercise[2])
     else:
@@ -326,9 +330,10 @@ def personalProfileTraineePlan():
     today = datetime.now().strftime("%A")[:3]
     exercises = []
     for exercise in plan[today]:
-        ex = conn.execute('SELECT Media, Name, Duration, Exercise_ID FROM Exercise WHERE Exercise_ID = ?',
+        photo = serve_image("Exercise", str(exercise))
+        ex = conn.execute('SELECT Name, Duration, Exercise_ID FROM Exercise WHERE Exercise_ID = ?',
                           (str(exercise),)).fetchall()
-        exercises.append(ex[0])
+        exercises.append([photo, ex[0][0], ex[0][1], ex[0][2]])
     conn.close()
     return render_template("personal_profile_trainee_plan.html", exercises=exercises,
                            gen_info=gen_info, trainee_info=trainee_info, pfp=pfp)
@@ -508,13 +513,12 @@ def profileCoachTrainees():
     trainees = []
     for trainee in trainees_collected:
         img = serve_image("User", trainee[0])
-        trainee_info = [trainee[7], img, trainee[0]]
+        trainee_info = [trainee[8], img, trainee[0]]
         print(trainee[7])
         print(img)
         trainees.append(trainee_info)
     pfp = serve_image("User", session["User_ID"])
-    return render_template("personal_profile_coach_trainees.html", trainees=trainees, gen_info=gen_info,
-                           coach_info=coach_info, pfp=pfp)
+    return render_template("personal_profile_coach_trainees.html", trainees=trainees, gen_info=gen_info, coach_info=coach_info, pfp=pfp)
 
 
 @app.route('/traineeStatsCoach', methods=['GET', 'POST'])
@@ -966,7 +970,8 @@ def verifyCoach():
     conn.execute('UPDATE Coach SET Verified = "TRUE" WHERE Coach_ID=?', (coachID,))
     conn.commit()
     conn.close()
-    send_email(coach_mail, "FitHub Access", "Congratulation! You got verified, you can now access our site as a coach :D")
+    send_email(coach_mail, "FitHub Access",
+               "Congratulation! You got verified, you can now access our site as a coach :D")
     # return to admin page
     return redirect(url_for('unverifiedCoaches'))
 
