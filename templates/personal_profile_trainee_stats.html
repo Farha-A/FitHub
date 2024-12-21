@@ -13,7 +13,7 @@
         <p>
             {{ gen_info[1] }} <br>
             Age: {{ gen_info[5] }}<br>
-            Height: {{ trainee_info[3] }} m
+            Height: {{ trainee_info[2] }} m
         </p>
     </div>
             <form action="/editProfileTrainee">
@@ -33,18 +33,28 @@
 </div>
 <div class="content">
     <p>
-        {# calories #}
-        BMI: {{ trainee_info[4] }}<br>
-        Weight: {{ trainee_info[2] }} KG<br>
+        BMI: {{ trainee_info[3] }}<br>
+        Weight: {{ trainee_info[1] }} KG<br>
         Nutrition information for the day:<br>
-        Calories consumed: {{ nutrition[0] }}<br>
-        Carbs consumed: {{ nutrition[1] }}<br>
-        Protein consumed: {{ nutrition[2] }}<br>
-        Fat consumed: {{ nutrition[3] }}<br>
-        Total exercise time: {{ workout_time }}<br>
-        Exercises done: {% for exercise in exercises %}
-        <img src="{{ exercise[0] }}" alt="img"> {{ exercise[1] }}<br>
-        {% endfor %}
+        {% if nutrition_flag %}
+            Calories consumed: {{ nutrition[3] }}<br>
+            Protein consumed: {{ nutrition[5] }}<br>
+            Carbs consumed: {{ nutrition[4] }}<br>
+            Fat consumed: {{ nutrition[2] }}<br>
+        {% endif %} 
+        {% if not nutrition_flag %}
+            No nutrition information yet, bet you're starving!
+        {% endif %}
+        Total exercise time: {{ workout_time }} hours<br>
+        Exercises done: <br>
+        {% if exercise_flag %}
+            {% for exercise in exercises %}
+                <img src="{{ exercise[0] }}" alt="img"> {{ exercise[1] }}<br>
+            {% endfor %}
+        {% endif %} 
+        {% if not exercise_flag %}
+            No exercises done yet, get up & moving!
+        {% endif %}
     </p>
         <form method="post">
             <button type="submit">Add Exercise Time</button>
