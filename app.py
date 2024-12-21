@@ -1,6 +1,6 @@
 # importing necessary libraries
 import tempfile
-from flask import Flask, render_template, request, session, flash, redirect, url_for, send_file
+from flask import Flask, render_template, request, session, flash, redirect, url_for, send_file, jsonify
 from io import BytesIO
 import sqlite3
 import random
@@ -178,14 +178,16 @@ def personalProfileTraineeStats():
     exercises_list = conn.execute('SELECT * FROM Trainee_Exercise WHERE Trainee_ID = ? AND Timestamp = ?',
                                   (session["User_ID"], today)).fetchall()
     workout_time = 0
+    exercises = []
     if exercises_list:
         exercise_flag = True
-        exercises_id = exercises_list[0].split(",")
-        exercises = conn.execute('SELECT Name, Media FROM Exercise WHERE Exercise_ID = ?', (exercises_id,)).fetchall()
+        exercises_id = exercises_list[0][1].split(",")
+        for eid in exercises_id:
+            e = conn.execute('SELECT Name, Media, Duration FROM Exercise WHERE Exercise_ID = ?', (eid,)).fetchall()
+            exercises.append(e[0])
         for exercise in exercises:
-            workout_time += int(exercise[6])
+            workout_time += int(exercise[2])
     else:
-        exercises = []
         exercise_flag = False
     nutrition = conn.execute('SELECT * FROM Trainee_Recipes WHERE Trainee_ID = ? AND Timestamp = ?',
                              (session["User_ID"], today)).fetchall()
@@ -197,7 +199,18 @@ def personalProfileTraineeStats():
         nutrition = []
         nutrition_flag = False
     pfp = serve_image("User", session["User_ID"])
-    workout_time = workout_time/3600
+    workout_time = round(workout_time/3600, 2)
+
+    if request.method == 'POST':
+        data = request.get_json()
+        if not data or 'number' not in data:
+            return jsonify({'message': 'No time entered'}), 400
+        number = data['number']
+        # Example of processing the number if needed
+        workout_time += float(number)/60
+        print(workout_time)
+        return jsonify({'message': 'Success', 'new_workout_time': workout_time})
+
     return render_template("personal_profile_trainee_stats.html", gen_info=gen_info, pfp=pfp,
                            trainee_info=trainee_info, exercises=exercises, workout_time=workout_time,
                            nutrition=nutrition, trainee=trainee, exercise_flag=exercise_flag,
