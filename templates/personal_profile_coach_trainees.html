@@ -43,11 +43,13 @@
         <div class="trainee-details">
     	<img src="{{ trainee[1] }}" alt="trainee pfp"> {{ trainee[0] }}
             <div class="buttons">
-                <form action="/chats">
-                    <button type="submit" name="chat">Chat</button>
+                <form method="POST" action="/chats">
+                    <input type="hidden" name="trainee_id" value="{{ trainee[2] }}">
+                    <button type="submit">Chat</button>
                 </form>
-                <form action="traineeStatsCoach.html">
-                    <button type="submit" name="stats">Statistics</button>
+                <form method="POST" action="/traineeStatsCoach">
+                    <input type="hidden" name="trainee_id" value="{{ trainee[2] }}">
+                    <button type="submit">Statistics</button>
                 </form>
             </div>
         </div>

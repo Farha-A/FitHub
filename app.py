@@ -296,7 +296,10 @@ def personalProfileCoachInformation():
     gen_info = conn.execute('SELECT * FROM User WHERE User_ID = ?', (session["User_ID"],)).fetchone()
     coach_info = conn.execute('SELECT * FROM Coach WHERE Coach_ID = ?', (session["User_ID"],)).fetchone()
     conn.close()
-    certificates = coach_info[4].split(" ")
+    if coach_info[4]:
+        certificates = coach_info[4].split(" ")
+    else:
+        certificates = []
     pfp = serve_image("User", session["User_ID"])
     return render_template("personal_profile_coach_information.html", gen_info=gen_info, pfp=pfp,
                            coach_info=coach_info, certificates=certificates)
@@ -412,13 +415,57 @@ def profileCoachTrainees():
     trainees = []
     for trainee in trainees_collected:
         img = serve_image("User", trainee[0])
-        trainee_info = [trainee[9], img]
-        print(trainee[9])
+        trainee_info = [trainee[7], img, trainee[0]]
+        print(trainee[7])
         print(img)
         trainees.append(trainee_info)
     pfp = serve_image("User", session["User_ID"])
     return render_template("personal_profile_coach_trainees.html", trainees=trainees, gen_info=gen_info,
                            coach_info=coach_info, pfp=pfp)
+
+
+@app.route('/traineeStatsCoach', methods=['GET', 'POST'])
+def traineeStatsCoach():
+    trainee_id = request.form['trainee_id']
+    conn = get_db_connection()
+    trainee = True
+    role = conn.execute('SELECT Role FROM User WHERE User_ID = ?', (trainee_id,)).fetchone()
+    if role == "Coach":
+        trainee = False
+    gen_info = conn.execute('SELECT * FROM User WHERE User_ID = ?', (trainee_id,)).fetchone()
+    trainee_info = conn.execute('SELECT * FROM Trainee WHERE Trainee_ID = ?', (trainee_id,)).fetchone()
+    today = datetime.now().strftime("%Y-%m-%d")
+    today = str(today)
+    exercises_list = conn.execute('SELECT * FROM Trainee_Exercise WHERE Trainee_ID = ? AND Timestamp = ?',
+                                  (trainee_id, today)).fetchall()
+    workout_time = 0
+    exercises = []
+    if exercises_list:
+        exercise_flag = True
+        exercises_id = exercises_list[0][1].split(",")
+        for eid in exercises_id:
+            e = conn.execute('SELECT Name, Media, Duration FROM Exercise WHERE Exercise_ID = ?', (eid,)).fetchall()
+            exercises.append(e[0])
+        for exercise in exercises:
+            workout_time += int(exercise[2])
+    else:
+        exercise_flag = False
+    nutrition = conn.execute('SELECT * FROM Trainee_Recipes WHERE Trainee_ID = ? AND Timestamp = ?',
+                             (trainee_id, today)).fetchall()
+    conn.close()
+    if nutrition:
+        nutrition = nutrition[0]
+        nutrition_flag = True
+    else:
+        nutrition = []
+        nutrition_flag = False
+    pfp = serve_image("User", trainee_id)
+    workout_time = round(workout_time/3600, 2)
+
+    return render_template("traineeStatsCoach.html", gen_info=gen_info, pfp=pfp,
+                           trainee_info=trainee_info, exercises=exercises, workout_time=workout_time,
+                           nutrition=nutrition, trainee=trainee, exercise_flag=exercise_flag,
+                           nutrition_flag=nutrition_flag)
 
 
 @app.route('/forgotPW', methods=['GET', 'POST'])
