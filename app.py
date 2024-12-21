@@ -199,7 +199,7 @@ def personalProfileTraineeStats():
         nutrition = []
         nutrition_flag = False
     pfp = serve_image("User", session["User_ID"])
-    workout_time = round(workout_time/3600, 2)
+    workout_time = round(workout_time / 3600, 2)
 
     if request.method == 'POST':
         data = request.get_json()
@@ -207,7 +207,7 @@ def personalProfileTraineeStats():
             return jsonify({'message': 'No time entered'}), 400
         number = data['number']
         # Example of processing the number if needed
-        workout_time += float(number)/60
+        workout_time += float(number) / 60
         print(workout_time)
         return jsonify({'message': 'Success', 'new_workout_time': workout_time})
 
@@ -288,6 +288,55 @@ def personalProfileTraineePlan():
     conn.close()
     return render_template("personal_profile_trainee_plan.html", exercises=exercises,
                            gen_info=gen_info, trainee_info=trainee_info, pfp=pfp)
+
+
+@app.route('/saveExercise', methods=['GET', 'POST'])
+def saveExercise():
+    exercise_id = request.form['saveExercise']
+    conn = get_db_connection()
+    today_date = str(datetime.now().strftime("%Y-%m-%d"))
+    no_exercise_yet = conn.execute('SELECT * FROM Trainee_Exercise WHERE Trainee_ID = ? AND Timestamp = ?',
+                                   (session["User_ID"], today_date)).fetchone()
+    if not no_exercise_yet:
+        conn.execute('INSERT INTO Trainee_Exercise (Trainee_ID, Trainee_Exercises, Timestamp) VALUES (?, ?, ?)',
+                     (session["User_ID"], exercise_id, today_date))
+    else:
+        prev_exercises = conn.execute('SELECT Trainee_Exercises FROM Trainee_Exercise WHERE Trainee_ID = ? '
+                                      'AND Timestamp = ?', (session["User_ID"], today_date)).fetchone()
+        exercises_ids = prev_exercises[0] + "," + exercise_id
+        conn.execute('UPDATE Trainee_Exercise SET Trainee_Exercises = ? WHERE Trainee_ID = ? AND Timestamp = ?',
+                     (exercises_ids, session["User_ID"], today_date))
+    conn.commit()
+    conn.close()
+    return redirect(url_for("personalProfileTraineePlan"))
+
+
+@app.route('/saveAllPlan', methods=['GET', 'POST'])
+def saveAllPlan():
+    conn = get_db_connection()
+    plan = conn.execute('SELECT Plan FROM Plan WHERE Trainee_ID = ?', (session["User_ID"],)).fetchone()
+    plan = ast.literal_eval(plan[0])
+    today = datetime.now().strftime("%A")[:3]
+    exercises_ids = ""
+    for exercise in plan[today]:
+        ex = conn.execute('SELECT Exercise_ID FROM Exercise WHERE Exercise_ID = ?', (str(exercise),)).fetchone()
+        exercises_ids += ex[0] + ","
+    exercises_ids = exercises_ids[:-1]
+    today_date = str(datetime.now().strftime("%Y-%m-%d"))
+    no_exercise_yet = conn.execute('SELECT * FROM Trainee_Exercise WHERE Trainee_ID = ? AND Timestamp = ?',
+                                   (session["User_ID"], today_date)).fetchone()
+    if not no_exercise_yet:
+        conn.execute('INSERT INTO Trainee_Exercise (Trainee_ID, Trainee_Exercises, Timestamp) VALUES (?, ?, ?)',
+                     (session["User_ID"], exercises_ids, today_date))
+    else:
+        prev_exercises = conn.execute('SELECT Trainee_Exercises FROM Trainee_Exercise WHERE Trainee_ID = ? '
+                                      'AND Timestamp = ?', (session["User_ID"], today_date)).fetchone()
+        exercises_ids = prev_exercises[0] + "," + exercises_ids
+        conn.execute('UPDATE Trainee_Exercise SET Trainee_Exercises = ? WHERE Trainee_ID = ? AND Timestamp = ?',
+                     (exercises_ids, session["User_ID"], today_date))
+    conn.commit()
+    conn.close()
+    return redirect(url_for("personalProfileTraineePlan"))
 
 
 @app.route('/profileCoachInformation', methods=['GET', 'POST'])
@@ -460,7 +509,7 @@ def traineeStatsCoach():
         nutrition = []
         nutrition_flag = False
     pfp = serve_image("User", trainee_id)
-    workout_time = round(workout_time/3600, 2)
+    workout_time = round(workout_time / 3600, 2)
 
     return render_template("traineeStatsCoach.html", gen_info=gen_info, pfp=pfp,
                            trainee_info=trainee_info, exercises=exercises, workout_time=workout_time,
@@ -723,7 +772,7 @@ def verifyCoach():
     app.config['MAIL_USE_TLS'] = False
     app.config['MAIL_USE_SSL'] = True
     mail = Mail(app)
-    msg = Message('FitHub Verification', sender='******', recipients=[coach_mail])
+    msg = Message('FitHub Access', sender='******', recipients=[coach_mail])
     msg.body = "Congratulation! You got verified, you can now access our site as a coach :D"
     mail.send(msg)
     # return to admin page
@@ -736,11 +785,22 @@ def denyCoach():
     # gets coachID
     coachID = request.form['deny_coach']
     conn = get_db_connection()
+    coach_mail = conn.execute('SELECT Email From User WHERE User_ID=?', (coachID,)).fetchone()[0]
     # delete coach from coach & user tables
     conn.execute('DELETE FROM Coach WHERE Coach_ID=?', (coachID,))
     conn.execute('DELETE FROM User WHERE User_ID=?', (coachID,))
     conn.commit()
     conn.close()
+    app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+    app.config['MAIL_PORT'] = 465
+    app.config['MAIL_USERNAME'] = '******'
+    app.config['MAIL_PASSWORD'] = '******'
+    app.config['MAIL_USE_TLS'] = False
+    app.config['MAIL_USE_SSL'] = True
+    mail = Mail(app)
+    msg = Message('FitHub Access', sender='******', recipients=[coach_mail])
+    msg.body = "Unfortunately, you have been denied access to FitHub. Work on your experiences and try again!"
+    mail.send(msg)
     # return to admin page
     return redirect(url_for('unverifiedCoaches'))
 
